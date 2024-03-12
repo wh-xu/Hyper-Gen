@@ -65,7 +65,7 @@ Positional arguments:
 
 
 ## Publication
-1. Weihong Xu, Po-kai Hsu, Niema Moshiri, Shimeng Yu, and Tajana Rosing. "HyperGen: Compact and Efficient Genome Sketching using Hyperdimensional Vectors." _Under review_.
+1. Weihong Xu, Po-kai Hsu, Niema Moshiri, Shimeng Yu, and Tajana Rosing. "[HyperGen: Compact and Efficient Genome Sketching using Hyperdimensional Vectors](https://www.biorxiv.org/content/10.1101/2024.03.05.583605)." _Under review_.
 
 
 ## Contact
