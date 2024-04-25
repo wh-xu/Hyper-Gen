@@ -1,6 +1,6 @@
 [package]
 name = "hyper-gen-rust"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -31,6 +31,7 @@ fxhash = "0.2.1"
 
 bitpacking = "0.9.2"
 ndarray = "0.15.6"
+ndarray-npy = "0.8.1"
 indicatif = "0.17.7"
 
 [[bin]]
