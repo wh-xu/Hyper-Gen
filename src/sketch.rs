@@ -84,17 +84,10 @@ fn extract_kmer_hash(file: PathBuf, sketch: &mut Sketch) {
     let mut fastx_reader = parse_fastx_file(&file).expect("Opening .fna files failed");
 
     while let Some(record) = fastx_reader.next() {
-        let seqrec = record.expect("invalid record");
+        let seq = record.expect("invalid record");
 
-        // normalize to make sure all the bases are consistently capitalized
-        let norm_seq = seqrec.normalize(false);
-        // let norm_seq = seqrec;
-
-        // we make a reverse complemented copy of the sequence
-        let rc = norm_seq.reverse_complement();
-
-        for (_, kmer, _) in norm_seq.canonical_kmers(sketch.ksize, &rc) {
-            sketch.insert_kmer_t1ha2(kmer);
+        for i in seq.bit_kmers(sketch.ksize, true) {
+            sketch.insert_kmer_t1ha2(&i.1 .0.to_ne_bytes());
         }
     }
 }

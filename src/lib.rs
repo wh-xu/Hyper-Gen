@@ -115,37 +115,19 @@ mod tests {
         println!("Time elapsed in t1ha1 is: {:?}", duration);
     }
 
-    // #[test]
-    // fn test_quantize() {
-    //     let mut sketch = Sketch::default();
-    //     let test_hv = vec![16, 7, -4, -37, -17, 17];
-    //     sketch.hv.clone_from(&test_hv);
-    //     sketch.hv_d = sketch.hv.len();
-    //     compress_hd_sketch(&mut sketch);
-    //     println!("Un-compressed HV = {:?}", test_hv);
-    //     println!("HV compress bits = {:?}", sketch.hv);
-
-    //     decompress_hd_sketch(&mut sketch.hv);
-    //     assert_eq!(sketch.hv, test_hv);
-    //     println!("HV decompressed: {:?}", sketch.hv);
-    // }
-
     #[test]
     fn test_kmer_bit_pack() {
-        use needletail::{bitkmer, Sequence};
+        use needletail::{bitkmer, parse_fastx_file, Sequence};
 
-        let seq = b"AGCTCTTANNAGCCCNTTacgttacagccctgaaaacttt";
-        let bk = bitkmer::BitNuclKmer::new(seq, 5, false);
+        let file = "./test/test.fna";
+        let mut fastx_reader = parse_fastx_file(&file).expect("Opening .fna files failed");
 
-        println!("Non-Canonical Kmers");
-        for i in bk {
-            println!("{:?}", i);
-        }
+        while let Some(record) = fastx_reader.next() {
+            let seq = record.expect("invalid record");
 
-        println!("Canonical Kmers");
-        let bk = bitkmer::BitNuclKmer::new(seq, 16, true);
-        for i in bk {
-            println!("{:?}\t{:?}", i, bitkmer::bitmer_to_bytes(i.1));
+            for i in seq.bit_kmers(17, true) {
+                println!("{:?}\t{:?}", i, 0);
+            }
         }
     }
 
