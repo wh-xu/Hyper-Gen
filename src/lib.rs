@@ -7,12 +7,17 @@ pub mod utils;
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+    use std::default;
     use std::hash::Hasher;
 
     use std::time::Instant;
 
+    use needletail::Sequence;
     use rand_xoshiro::Xoroshiro64Star;
+    use rayon::iter::Enumerate;
     use wyhash::{wyrng, WyRng};
+    use xxhash_rust::xxh3::xxh3_64_with_seed;
 
     use crate::hd;
     use crate::{
@@ -125,8 +130,31 @@ mod tests {
         while let Some(record) = fastx_reader.next() {
             let seq = record.expect("invalid record");
 
-            for i in seq.bit_kmers(17, true) {
+            println!("{:?}", String::from_utf8(seq.seq().to_vec()));
+            for i in seq.bit_kmers(5, true) {
                 println!("{:?}\t{:?}", i, 0);
+            }
+        }
+    }
+
+    #[test]
+    fn test_fast_xxhash() {
+        use needletail::parse_fastx_file;
+        use xxhash_rust::xxh3::xxh3_64;
+
+        let file = "./test/test.fna";
+        let mut fastx_reader = parse_fastx_file(&file).expect("Opening .fna files failed");
+
+        while let Some(record) = fastx_reader.next() {
+            let seq = record.expect("invalid record");
+            let norm_seq = seq.normalize(false);
+
+            let rc = norm_seq.reverse_complement();
+
+            println!("{:?}", String::from_utf8(norm_seq.to_vec()));
+            for (_, kmer, _) in norm_seq.canonical_kmers(5, &rc) {
+                let h = xxh3_64(kmer);
+                println!("{:?}\t{:?}", String::from_utf8(kmer.to_vec()), h);
             }
         }
     }
@@ -264,5 +292,135 @@ mod tests {
             tstart.elapsed().as_secs_f32()
         );
         assert_eq!(&hv, &hv_decompressed);
+    }
+
+    #[test]
+    fn test_xxhash_rng() {
+        let mut rng = xxhash_rust::xxh3::Xxh3::with_seed(1);
+
+        for i in 0..4 {
+            let h = rng.digest();
+            rng.write_u64(h);
+            println!("{}", h);
+        }
+    }
+
+    #[test]
+    fn test_minmer() {
+        use needletail::sequence::minimizer;
+        use rust_seq2kminmers::KminmersIterator;
+
+        let seq = b"AACTGCACTGCACTGCACTGCACACTGCACTGCACTGCACTGCACACTGCACTGCACTGACTGCACTGCACTGCACTGCACTGCCTGC";
+
+        let iter = KminmersIterator::new(seq, 4, 7, 0.1, false).unwrap();
+        for kminmer in iter {
+            println!("kminmer: {:?}", kminmer);
+            println!("{:?}", kminmer.mers()[0]);
+        }
+
+        // let mz = minimizer(seq, 5);
+        // println!("{:?}", mz);
+    }
+
+    #[test]
+    fn test_minimizer_strobemer() {
+        use needletail::{bitkmer, parse_fastx_file, Sequence};
+        use rust_seq2kminmers::KminmersIterator;
+        use std::collections::HashSet;
+        use std::time;
+
+        fn Jaccard_to_ANI(J: f32, k: usize) -> f32 {
+            let ani: f32 = 1.0 + (2.0 / (1.0 / J + 1.0)).ln() / (k as f32);
+            ani
+        }
+
+        // use minimizer for sampling
+        let file_query = "./test/Escherichia_coli_0_1288_GCA_000303255.LargeContigs.fna";
+        // let file_ref = "./test/Escherichia_coli_2871950_GCA_000355455.LargeContigs.fna";
+        let file_ref = "./test/Escherichia_coli_HVH_217__4_1022806__GCA_000459375.LargeContigs.fna";
+        let mut sketch_vecs: Vec<HashSet<u64>> = vec![HashSet::<u64>::default(); 2];
+
+        let w = 20;
+        let k = 21;
+        let density = 0.01;
+
+        for (i, file) in [file_query, file_ref].iter().enumerate() {
+            let mut fastx_reader = parse_fastx_file(&file).expect("Opening .fna files failed");
+
+            while let Some(record) = fastx_reader.next() {
+                let seq = record.expect("invalid record");
+                let seq = seq.normalize(false);
+
+                let iter = KminmersIterator::new(seq.sequence(), k, w, density, false).unwrap();
+                for kminmer in iter {
+                    sketch_vecs[i].insert(kminmer.mers()[0]);
+                    // println!("kminmer: {:?}", kminmer);
+                    // println!("{:?}", kminmer.mers()[0]);
+                }
+                // println!("{:?}", String::from_utf8(seq.seq().to_vec()));
+                // for i in seq.bit_kmers(5, true) {
+                //     println!("{:?}\t{:?}", i, 0);
+                // }
+                // return;
+            }
+            println!("{:?}", sketch_vecs[i].len());
+        }
+
+        let i = sketch_vecs[0].intersection(&sketch_vecs[1]).count();
+        let u = sketch_vecs[0].union(&sketch_vecs[1]).count();
+        let J = (i as f32) / u as f32;
+        let ANI = Jaccard_to_ANI(J, k);
+
+        println!("Minmer: J = {}\t ANI = {}", J, ANI);
+
+        //
+        let scaled = 2000;
+        let mut sketch_vecs: Vec<HashSet<u64>> = vec![HashSet::<u64>::default(); 2];
+
+        let now = time::Instant::now();
+        for (i, file) in [file_query, file_ref].iter().enumerate() {
+            let mut fastx_reader = parse_fastx_file(&file).expect("Opening .fna files failed");
+
+            while let Some(record) = fastx_reader.next() {
+                let seq = record.expect("invalid record");
+                let norm_seq = seq.normalize(false);
+
+                // let rc = norm_seq.reverse_complement();
+                // for (_, kmer, _) in norm_seq.canonical_kmers(k as u8, &rc) {
+                //     let h = xxh3_64_with_seed(kmer, 1);
+                //     if h < u64::MAX / scaled {
+                //         sketch_vecs[i].insert(h);
+                //     }
+                // }
+
+                for kmer in norm_seq.kmers(k as u8) {
+                    let h = xxh3_64_with_seed(kmer, 1);
+                    if h < u64::MAX / scaled {
+                        sketch_vecs[i].insert(h);
+                    }
+                }
+
+                // for (_, (kmer_u64, _), _) in norm_seq.bit_kmers(k as u8, true) {
+                // let h = xxh3_64_with_seed(&kmer_u64.to_be_bytes(), 1);
+                // if h < u64::MAX / scaled {
+                //     sketch_vecs[i].insert(h);
+                // }
+                // }
+            }
+            println!("{:?}", sketch_vecs[i].len());
+        }
+
+        let elapsed = now.elapsed();
+
+        let i = sketch_vecs[0].intersection(&sketch_vecs[1]).count();
+        let u = sketch_vecs[0].union(&sketch_vecs[1]).count();
+        let J = (i as f32) / u as f32;
+        let ANI = Jaccard_to_ANI(J, k);
+
+        println!(
+            "kmer: J = {}\t ANI = {}, elapsed time = {:?}",
+            J, ANI, elapsed
+        );
+        // use strobemer for sampling
     }
 }
