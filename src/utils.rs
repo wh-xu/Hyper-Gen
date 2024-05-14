@@ -21,38 +21,55 @@ pub fn create_cli() -> CliParams {
         )
         .subcommand(
             // sketch command
-            clap::command!(params::CMD_SKETCH).args(&[
-                arg!(-p --path <PATH> "Input folder path to sketch")
-                    .value_parser(value_parser!(PathBuf)),
-                arg!(-r --path_r <PATH_R> "Path to ref sketch file")
-                    .default_value("1")
-                    .value_parser(value_parser!(PathBuf)),
-                arg!(-q --path_q <PATH_Q> "Path to query sketch file")
-                    .default_value("1")
-                    .value_parser(value_parser!(PathBuf)),
-                arg!(-o --out [OUT] "Output path ").value_parser(value_parser!(PathBuf)),
-                arg!(-t --thread <THREAD> "# of threads used for computation")
-                    .default_value("16")
-                    .value_parser(value_parser!(u8)),
-                arg!(-S --sketch_method <METHOD> "Sketch method")
-                    .default_value("fracminhash")
-                    .value_parser(value_parser!(String)),
-                arg!(-k --ksize <KSIZE> "k-mer size for sketching")
-                    .default_value("21")
-                    .value_parser(value_parser!(u8)),
-                arg!(-m --min_kmer <MIN_KMER_CNT> "Minimum valid k-mer count")
-                    .default_value("1")
-                    .value_parser(value_parser!(u32)),
-                arg!(-s --scaled <SCALED> "Scaled factor for FracMinHash")
-                    .default_value("1500")
-                    .value_parser(value_parser!(u64)),
-                arg!(-d --hv_d <HD_D> "Dimension for hypervector")
-                    .default_value("4096")
-                    .value_parser(value_parser!(usize)),
-                arg!(-th --ani_th <ANI_TH> "ANI threshold")
-                    .default_value("85.0")
-                    .value_parser(value_parser!(f32)),
-            ]),
+            clap::command!(params::CMD_SKETCH).args(
+                &[
+                    arg!(-p --path <PATH> "Input folder path to sketch").value_parser(value_parser!(PathBuf)),
+                    arg!(-r --path_r <PATH_R> "Path to ref sketch file").default_value("1").value_parser(value_parser!(PathBuf)),
+                    arg!(-q --path_q <PATH_Q> "Path to query sketch file").default_value("1").value_parser(value_parser!(PathBuf)),
+                    arg!(-o --out [OUT] "Output path ").value_parser(value_parser!(PathBuf)),
+                    arg!(-t --thread <THREAD> "# of threads used for computation").default_value("16").value_parser(value_parser!(u8)),
+                    arg!(-S --sketch_method <METHOD> "Sketch method").default_value("t1ha2").value_parser(value_parser!(String)),
+                    arg!(-k --ksize <KSIZE> "k-mer size for sketching").default_value("21").value_parser(value_parser!(u8)),
+                    arg!(-m --min_kmer <MIN_KMER_CNT> "Minimum valid k-mer count").default_value("1").value_parser(value_parser!(u32)),
+                    arg!(-s --scaled <SCALED> "Scaled factor for FracMinHash").default_value("1500").value_parser(value_parser!(u64)),
+                    arg!(-d --hv_d <HD_D> "Dimension for hypervector").default_value("4096").value_parser(value_parser!(usize)),
+                    arg!(-th --ani_th <ANI_TH> "ANI threshold").default_value("50.0").value_parser(value_parser!(f32)),
+                ]
+            )
+        ).subcommand(
+            // dist command
+            clap::command!(params::CMD_DIST).args(
+                &[
+                    arg!(-p --path <PATH> "Path to sketch file").default_value("1").value_parser(value_parser!(PathBuf)),
+                    arg!(-r --path_r <PATH_R> "Path to ref sketch file").value_parser(value_parser!(PathBuf)),
+                    arg!(-q --path_q <PATH_Q> "Path to query sketch file").value_parser(value_parser!(PathBuf)),
+                    arg!(-o --out [OUT] "Output path ").value_parser(value_parser!(PathBuf)),
+                    arg!(-t --thread <THREAD> "# of threads used for computation").default_value("16").value_parser(value_parser!(u8)),
+                    arg!(-k --ksize <KSIZE> "k-mer size for sketching").default_value("21").value_parser(value_parser!(u8)),
+                    arg!(-S --sketch_method <METHOD> "Sketch method").default_value("fracminhash").value_parser(value_parser!(String)),
+                    arg!(-m --min_kmer <MIN_KMER_CNT> "Minimum valid k-mer count").default_value("1").value_parser(value_parser!(u32)),
+                    arg!(-s --scaled <SCALED> "Scaled factor for FracMinHash").default_value("1500").value_parser(value_parser!(u64)),
+                    arg!(-d --hv_d <HD_D> "Dimension for hypervector").default_value("4096").value_parser(value_parser!(usize)),
+                    arg!(-th --ani_th <ANI_TH> "ANI threshold").default_value("50.0").value_parser(value_parser!(f32)),
+                ]
+            )
+        ).subcommand(
+            // search command
+            clap::command!(params::CMD_SEARCH).args(
+                &[
+                    arg!(-p --path <PATH> "Path to sketch file").default_value("1").value_parser(value_parser!(PathBuf)),
+                    arg!(-r --path_r <PATH_R> "Path to ref sketch file").value_parser(value_parser!(PathBuf)),
+                    arg!(-q --path_q <PATH_Q> "Path to query sketch file").value_parser(value_parser!(PathBuf)),
+                    arg!(-o --out [OUT] "Output path ").value_parser(value_parser!(PathBuf)),
+                    arg!(-t --thread <THREAD> "# of threads used for computation").default_value("16").value_parser(value_parser!(u8)),
+                    arg!(-k --ksize <KSIZE> "k-mer size for sketching").default_value("21").value_parser(value_parser!(u8)),
+                    arg!(-S --sketch_method <METHOD> "Sketch method").default_value("fracminhash").value_parser(value_parser!(String)),
+                    arg!(-m --min_kmer <MIN_KMER_CNT> "Minimum valid k-mer count").default_value("1").value_parser(value_parser!(u32)),
+                    arg!(-s --scaled <SCALED> "Scaled factor for FracMinHash").default_value("800").value_parser(value_parser!(u64)),
+                    arg!(-d --hv_d <HD_D> "Dimension for hypervector").default_value("1024").value_parser(value_parser!(usize)),
+                    arg!(-th --ani_th <ANI_TH> "ANI threshold").default_value("85.0").value_parser(value_parser!(f32)),
+                ]
+            )
         )
         .subcommand(
             // dist command

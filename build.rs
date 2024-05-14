@@ -17,8 +17,11 @@ fn main() {
     let ptx_file = out_dir.join("cuda_kmer_bit_pack_mmhash.ptx");
 
     // Specify the desired architecture version.
-    let arch = "compute_86"; // For example, using SM 8.6 (Ampere architecture).
-    let code = "sm_86"; // For the same SM 8.6 (Ampere architecture).
+    // Check: https://developer.nvidia.com/cuda-gpus
+    // let arch = "compute_86"; // For example, using SM 8.6 (Ampere architecture).
+    // let code = "sm_86"; // For the same SM 8.6 (Ampere architecture).
+    let arch = "compute_89"; // For example, using SM 8.9 (Ada Lovelace architecture).
+    let code = "sm_89"; // For the same SM 8.9 (Ada Lovelace architecture).
 
     let nvcc_status = Command::new("nvcc")
         .arg("-ptx")

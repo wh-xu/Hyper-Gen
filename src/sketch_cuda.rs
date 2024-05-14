@@ -229,14 +229,14 @@ fn extract_kmer_hash_cuda(file: &PathBuf, sketch: &mut Sketch, gpu: &Arc<CudaDev
     let ksize = sketch.ksize as usize;
     let scaled = sketch.scaled;
     let n_kmers = n_bps - ksize + 1;
-    let bp_per_thread = 1024;
+    let bp_per_thread = 512;
     let n_threads = (n_kmers + bp_per_thread - 1) / bp_per_thread;
 
     // copy to GPU
     let gpu_seq = gpu.htod_copy(fna_seqs).unwrap();
     let gpu_seq_nt4_table = gpu.htod_copy(SEQ_NT4_TABLE.to_vec()).unwrap();
     // allocate 4x more space that expected
-    let n_hash_per_thread = max(bp_per_thread / sketch.scaled as usize * 3, 8);
+    let n_hash_per_thread = max(bp_per_thread / sketch.scaled as usize * 4, 8);
     let n_hash_array = n_hash_per_thread * n_threads;
     let gpu_kmer_bit_hash = gpu.alloc_zeros::<u64>(n_hash_array).unwrap();
 
@@ -341,7 +341,7 @@ pub fn sketch_cuda(params: SketchParams) {
     pb.finish();
 
     println!(
-        "Sketching {} files took {:.3}\t {:.1} files/s",
+        "Sketching {} files took {:.3}s\t {:.1} files/s",
         files.len(),
         pb.elapsed().as_secs_f32(),
         (files.len() as f32 / pb.elapsed().as_secs_f32())

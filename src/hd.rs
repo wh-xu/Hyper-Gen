@@ -1,8 +1,9 @@
-use std::arch::x86_64::*;
+use std::{arch::x86_64::*, hash::Hasher};
 // use std::time::Instant;
 
 use crate::types::{FileSketch, Sketch};
 use rand::{RngCore, SeedableRng};
+use rand_xoshiro;
 use wyhash::WyRng;
 
 extern crate bitpacking;
@@ -20,6 +21,7 @@ pub unsafe fn encode_hash_hd_avx2(sketch: &mut Sketch) {
     );
 
     let mut rng_vec = vec![WyRng::default(); 4];
+    // let mut rng_vec = vec![SeedableRng::seed_from_u64(0); 4];
     let mut rnd_vec: Vec<u64> = vec![0; 4];
 
     let num_seed = sketch.hash_set.len();
@@ -39,6 +41,7 @@ pub unsafe fn encode_hash_hd_avx2(sketch: &mut Sketch) {
         // fetch seeds and load into RNG
         for j in 0..4 {
             rng_vec[j] = WyRng::seed_from_u64(seed_vec[b_i * 4 + j]);
+            // rng_vec[j] = rand_xoshiro::Xoshiro256Plus::seed_from_u64(seed_vec[b_i * 4 + j]);
         }
 
         // SIMD-based HV encoding

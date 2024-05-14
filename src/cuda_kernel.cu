@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include "cuda_kernel.h"
 
 extern "C" __device__ uint64_t mmhash_u64(uint64_t key) {
@@ -53,6 +54,7 @@ extern "C" __global__ void cuda_kmer_bit_pack_mmhash(
           // compute kmer hash
           if (canonical) {
             kmer_hash = mmhash_u64(min(cur_kmer_fwd, cur_kmer_rev));
+            // kmer_hash = min(mmhash_u64(cur_kmer_fwd), mmhash_u64(cur_kmer_rev));
           } else {
             kmer_hash = mmhash_u64(cur_kmer_fwd);
           }

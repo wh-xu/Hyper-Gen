@@ -70,7 +70,7 @@ pub fn sketch(params: SketchParams) {
     pb.finish();
 
     println!(
-        "Sketching {} files took {:.3}\t {:.1} files/s",
+        "Sketching {} files took {:.3}s\t {:.1} files/s",
         files.len(),
         pb.elapsed().as_secs_f32(),
         (files.len() as f32 / pb.elapsed().as_secs_f32())
@@ -84,10 +84,29 @@ fn extract_kmer_hash(file: PathBuf, sketch: &mut Sketch) {
     let mut fastx_reader = parse_fastx_file(&file).expect("Opening .fna files failed");
 
     while let Some(record) = fastx_reader.next() {
-        let seq = record.expect("invalid record");
+        let seqrec: needletail::parser::SequenceRecord<'_> = record.expect("invalid record");
 
-        for i in seq.bit_kmers(sketch.ksize, true) {
-            sketch.insert_kmer_t1ha2(&i.1 .0.to_ne_bytes());
+        // normalize to make sure all the bases are consistently capitalized
+        let norm_seq = seqrec.normalize(false);
+
+        if sketch.sketch_method.as_str() == "mmhash64_xor_c" {
+            for (_, (kmer_u64, _), _) in norm_seq.bit_kmers(sketch.ksize, true) {
+                sketch.insert_kmer_u64(kmer_u64);
+            }
+        } else {
+            // we make a reverse complemented copy of the sequence
+            let rc = norm_seq.reverse_complement();
+
+            for (_, kmer, _) in norm_seq.canonical_kmers(sketch.ksize, &rc) {
+                sketch.insert_kmer(kmer);
+            }
         }
     }
+
+    // Filter kmers
+    // for i in sketch.hash_set.clone() {
+    //     if sketch.cbf.estimate_count(&i) > 8 {
+    //         sketch.hash_set.remove(&i);
+    //     }
+    // }
 }
