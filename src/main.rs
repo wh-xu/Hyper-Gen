@@ -11,7 +11,7 @@ fn main() {
     if cli_params.mode == params::CMD_SKETCH {
         let sketch_params = types::SketchParams::new(&cli_params);
 
-        if sketch_params.sketch_method.contains("cuda") {
+        if sketch_params.device == "gpu" {
             sketch_cuda::sketch_cuda(sketch_params);
         } else {
             sketch::sketch(sketch_params);
@@ -20,12 +20,6 @@ fn main() {
         let mut sketch_dist = types::SketchDist::new(&cli_params);
         dist::dist(&mut sketch_dist);
     } else if cli_params.mode == params::CMD_SEARCH {
-        // let sketch_dist = types::SketchDist::new(&cli_params);
-        // utils::dump_sketch_to_txt(&sketch_dist.path_ref_sketch.as_path());
-        sketch_cuda::cuda_hash_parallel(
-            &String::from(cli_params.path.to_str().unwrap()),
-            cli_params.ksize as usize,
-            cli_params.scaled,
-        );
+        // TODO: support for search
     }
 }

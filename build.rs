@@ -14,7 +14,7 @@ fn main() {
 
     // build the cuda kernels
     let cuda_src = PathBuf::from("src/cuda_kernel.cu");
-    let ptx_file = out_dir.join("cuda_kmer_bit_pack_mmhash.ptx");
+    let ptx_file = out_dir.join("cuda_kmer_hash.ptx");
 
     // Specify the desired architecture version.
     // Check: https://developer.nvidia.com/cuda-gpus
