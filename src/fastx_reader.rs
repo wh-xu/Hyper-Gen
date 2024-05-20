@@ -12,7 +12,12 @@ pub fn read_merge_seq(file_name: &PathBuf) -> Vec<u8> {
     let mut buf = String::new();
     while reader.read_line(&mut buf).unwrap() > 0 {
         if !buf.starts_with('>') {
-            buf.pop(); //remove \n character
+            if buf.ends_with('\n') {
+                buf.pop(); //remove \n character
+            }
+            if buf.ends_with('\r') {
+                buf.pop();
+            }
             fna_seqs.extend_from_slice(buf.as_bytes());
         } else {
             fna_seqs.push(b'N');

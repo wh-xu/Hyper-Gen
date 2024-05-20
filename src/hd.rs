@@ -1,9 +1,8 @@
-use std::{arch::x86_64::*, hash::Hasher};
+use std::arch::x86_64::*;
 // use std::time::Instant;
 
 use crate::types::{FileSketch, Sketch};
 use rand::{RngCore, SeedableRng};
-use rand_xoshiro;
 use wyhash::WyRng;
 
 extern crate bitpacking;

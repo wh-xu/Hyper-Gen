@@ -21,55 +21,44 @@ pub fn create_cli() -> CliParams {
         )
         .subcommand(
             // sketch command
-            clap::command!(params::CMD_SKETCH).args(
-                &[
-                    arg!(-p --path <PATH> "Input folder path to sketch").value_parser(value_parser!(PathBuf)),
-                    arg!(-r --path_r <PATH_R> "Path to ref sketch file").default_value("1").value_parser(value_parser!(PathBuf)),
-                    arg!(-q --path_q <PATH_Q> "Path to query sketch file").default_value("1").value_parser(value_parser!(PathBuf)),
-                    arg!(-o --out [OUT] "Output path ").value_parser(value_parser!(PathBuf)),
-                    arg!(-t --thread <THREAD> "# of threads used for computation").default_value("16").value_parser(value_parser!(u8)),
-                    arg!(-S --sketch_method <METHOD> "Sketch method").default_value("t1ha2").value_parser(value_parser!(String)),
-                    arg!(-k --ksize <KSIZE> "k-mer size for sketching").default_value("21").value_parser(value_parser!(u8)),
-                    arg!(-m --min_kmer <MIN_KMER_CNT> "Minimum valid k-mer count").default_value("1").value_parser(value_parser!(u32)),
-                    arg!(-s --scaled <SCALED> "Scaled factor for FracMinHash").default_value("1500").value_parser(value_parser!(u64)),
-                    arg!(-d --hv_d <HD_D> "Dimension for hypervector").default_value("4096").value_parser(value_parser!(usize)),
-                    arg!(-th --ani_th <ANI_TH> "ANI threshold").default_value("50.0").value_parser(value_parser!(f32)),
-                ]
-            )
-        ).subcommand(
-            // dist command
-            clap::command!(params::CMD_DIST).args(
-                &[
-                    arg!(-p --path <PATH> "Path to sketch file").default_value("1").value_parser(value_parser!(PathBuf)),
-                    arg!(-r --path_r <PATH_R> "Path to ref sketch file").value_parser(value_parser!(PathBuf)),
-                    arg!(-q --path_q <PATH_Q> "Path to query sketch file").value_parser(value_parser!(PathBuf)),
-                    arg!(-o --out [OUT] "Output path ").value_parser(value_parser!(PathBuf)),
-                    arg!(-t --thread <THREAD> "# of threads used for computation").default_value("16").value_parser(value_parser!(u8)),
-                    arg!(-k --ksize <KSIZE> "k-mer size for sketching").default_value("21").value_parser(value_parser!(u8)),
-                    arg!(-S --sketch_method <METHOD> "Sketch method").default_value("fracminhash").value_parser(value_parser!(String)),
-                    arg!(-m --min_kmer <MIN_KMER_CNT> "Minimum valid k-mer count").default_value("1").value_parser(value_parser!(u32)),
-                    arg!(-s --scaled <SCALED> "Scaled factor for FracMinHash").default_value("1500").value_parser(value_parser!(u64)),
-                    arg!(-d --hv_d <HD_D> "Dimension for hypervector").default_value("4096").value_parser(value_parser!(usize)),
-                    arg!(-th --ani_th <ANI_TH> "ANI threshold").default_value("50.0").value_parser(value_parser!(f32)),
-                ]
-            )
-        ).subcommand(
-            // search command
-            clap::command!(params::CMD_SEARCH).args(
-                &[
-                    arg!(-p --path <PATH> "Path to sketch file").default_value("1").value_parser(value_parser!(PathBuf)),
-                    arg!(-r --path_r <PATH_R> "Path to ref sketch file").value_parser(value_parser!(PathBuf)),
-                    arg!(-q --path_q <PATH_Q> "Path to query sketch file").value_parser(value_parser!(PathBuf)),
-                    arg!(-o --out [OUT] "Output path ").value_parser(value_parser!(PathBuf)),
-                    arg!(-t --thread <THREAD> "# of threads used for computation").default_value("16").value_parser(value_parser!(u8)),
-                    arg!(-k --ksize <KSIZE> "k-mer size for sketching").default_value("21").value_parser(value_parser!(u8)),
-                    arg!(-S --sketch_method <METHOD> "Sketch method").default_value("fracminhash").value_parser(value_parser!(String)),
-                    arg!(-m --min_kmer <MIN_KMER_CNT> "Minimum valid k-mer count").default_value("1").value_parser(value_parser!(u32)),
-                    arg!(-s --scaled <SCALED> "Scaled factor for FracMinHash").default_value("800").value_parser(value_parser!(u64)),
-                    arg!(-d --hv_d <HD_D> "Dimension for hypervector").default_value("1024").value_parser(value_parser!(usize)),
-                    arg!(-th --ani_th <ANI_TH> "ANI threshold").default_value("85.0").value_parser(value_parser!(f32)),
-                ]
-            )
+            clap::command!(params::CMD_SKETCH).args(&[
+                arg!(-p --path <PATH> "Input folder path to sketch")
+                    .value_parser(value_parser!(PathBuf)),
+                arg!(-r --path_r <PATH_R> "Path to ref sketch file")
+                    .default_value("1")
+                    .value_parser(value_parser!(PathBuf)),
+                arg!(-q --path_q <PATH_Q> "Path to query sketch file")
+                    .default_value("1")
+                    .value_parser(value_parser!(PathBuf)),
+                arg!(-o --out [OUT] "Output path ").value_parser(value_parser!(PathBuf)),
+                arg!(-t --thread <THREAD> "# of threads used for computation")
+                    .default_value("16")
+                    .value_parser(value_parser!(u8)),
+                arg!(-m --sketch_method <METHOD> "Sketch method")
+                    .default_value("t1ha2")
+                    .value_parser(value_parser!(String)),
+                arg!(-C --canonical <CANONICAL> "If use canonical kmer")
+                    .default_value("true")
+                    .value_parser(value_parser!(bool)),
+                arg!(-k --ksize <KSIZE> "k-mer size for sketching")
+                    .default_value("21")
+                    .value_parser(value_parser!(u8)),
+                arg!(-S --seed <SEED> "Hash seed")
+                    .default_value("123")
+                    .value_parser(value_parser!(u64)),
+                arg!(-s --scaled <SCALED> "Scaled factor for FracMinHash")
+                    .default_value("1500")
+                    .value_parser(value_parser!(u64)),
+                arg!(-d --hv_d <HD_D> "Dimension for hypervector")
+                    .default_value("4096")
+                    .value_parser(value_parser!(usize)),
+                arg!(--ani_th <ANI_TH> "ANI threshold")
+                    .default_value("85.0")
+                    .value_parser(value_parser!(f32)),
+                arg!(-D --device <DEVICE> "Device to run")
+                    .default_value("cpu")
+                    .value_parser(value_parser!(String)),
+            ]),
         )
         .subcommand(
             // dist command
@@ -85,24 +74,30 @@ pub fn create_cli() -> CliParams {
                 arg!(-t --thread <THREAD> "# of threads used for computation")
                     .default_value("16")
                     .value_parser(value_parser!(u8)),
+                arg!(-m --sketch_method <METHOD> "Sketch method")
+                    .default_value("fracminhash")
+                    .value_parser(value_parser!(String)),
+                arg!(-C --canonical <CANONICAL> "If use canonical kmer")
+                    .default_value("true")
+                    .value_parser(value_parser!(bool)),
                 arg!(-k --ksize <KSIZE> "k-mer size for sketching")
                     .default_value("21")
                     .value_parser(value_parser!(u8)),
-                arg!(-S --sketch_method <METHOD> "Sketch method")
-                    .default_value("fracminhash")
-                    .value_parser(value_parser!(String)),
-                arg!(-m --min_kmer <MIN_KMER_CNT> "Minimum valid k-mer count")
-                    .default_value("1")
-                    .value_parser(value_parser!(u32)),
+                arg!(-S --seed <SEED> "Hash seed")
+                    .default_value("123")
+                    .value_parser(value_parser!(u64)),
                 arg!(-s --scaled <SCALED> "Scaled factor for FracMinHash")
                     .default_value("1500")
                     .value_parser(value_parser!(u64)),
                 arg!(-d --hv_d <HD_D> "Dimension for hypervector")
                     .default_value("4096")
                     .value_parser(value_parser!(usize)),
-                arg!(-th --ani_th <ANI_TH> "ANI threshold")
+                arg!(--ani_th <ANI_TH> "ANI threshold")
                     .default_value("85.0")
                     .value_parser(value_parser!(f32)),
+                arg!(-D --device <DEVICE> "Device to run")
+                    .default_value("cpu")
+                    .value_parser(value_parser!(String)),
             ]),
         )
         .subcommand(
@@ -112,10 +107,8 @@ pub fn create_cli() -> CliParams {
                     .default_value("1")
                     .value_parser(value_parser!(PathBuf)),
                 arg!(-r --path_r <PATH_R> "Path to ref sketch file")
-                    .default_value("1")
                     .value_parser(value_parser!(PathBuf)),
                 arg!(-q --path_q <PATH_Q> "Path to query sketch file")
-                    .default_value("1")
                     .value_parser(value_parser!(PathBuf)),
                 arg!(-o --out [OUT] "Output path ").value_parser(value_parser!(PathBuf)),
                 arg!(-t --thread <THREAD> "# of threads used for computation")
@@ -124,19 +117,16 @@ pub fn create_cli() -> CliParams {
                 arg!(-k --ksize <KSIZE> "k-mer size for sketching")
                     .default_value("21")
                     .value_parser(value_parser!(u8)),
-                arg!(-S --sketch_method <METHOD> "Sketch method")
+                arg!(-m --sketch_method <METHOD> "Sketch method")
                     .default_value("fracminhash")
                     .value_parser(value_parser!(String)),
-                arg!(-m --min_kmer <MIN_KMER_CNT> "Minimum valid k-mer count")
-                    .default_value("1")
-                    .value_parser(value_parser!(u32)),
                 arg!(-s --scaled <SCALED> "Scaled factor for FracMinHash")
                     .default_value("1500")
                     .value_parser(value_parser!(u64)),
                 arg!(-d --hv_d <HD_D> "Dimension for hypervector")
                     .default_value("4096")
                     .value_parser(value_parser!(usize)),
-                arg!(-th --ani_th <ANI_TH> "ANI threshold")
+                arg!(--ani_th <ANI_TH> "ANI threshold")
                     .default_value("85.0")
                     .value_parser(value_parser!(f32)),
             ]),
@@ -172,12 +162,14 @@ pub fn parse_cmd(cmd: Command) -> CliParams {
             .get_one::<String>("sketch_method")
             .expect("")
             .clone(),
-        min_kmer_cnt: matches.get_one::<u32>("min_kmer").expect("").clone(),
+        canonical: matches.get_one::<bool>("canonical").expect("").clone(),
+        seed: matches.get_one::<u64>("seed").expect("").clone(),
         scaled: matches.get_one::<u64>("scaled").expect("").clone(),
         hv_d: matches.get_one::<usize>("hv_d").expect("").clone(),
         ani_threshold: matches.get_one::<f32>("ani_th").expect("").clone(),
         if_compressed: true, // TODO
         threads: matches.get_one::<u8>("thread").expect("").clone(),
+        device: matches.get_one::<String>("device").expect("").clone(),
     };
 
     cli_params

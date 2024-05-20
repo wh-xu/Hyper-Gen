@@ -1,7 +1,7 @@
+use std::{arch::x86_64::*, path::PathBuf};
+
 use glob::glob;
 use log::info;
-
-use std::path::PathBuf;
 
 use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
@@ -40,7 +40,13 @@ pub fn sketch(params: SketchParams) {
             );
 
             // Extract kmer hash from genome sequence
-            extract_kmer_hash(file, &mut sketch);
+            if is_x86_feature_detected!("avx2") && sketch.sketch_method.contains("avx") {
+                unsafe {
+                    extract_kmer_hash_avx2(file, &mut sketch);
+                }
+            } else {
+                extract_kmer_hash(file, &mut sketch);
+            }
 
             // Encode extracted kmer hash into sketch HV
             if is_x86_feature_detected!("avx2") {
@@ -89,7 +95,7 @@ fn extract_kmer_hash(file: PathBuf, sketch: &mut Sketch) {
         // normalize to make sure all the bases are consistently capitalized
         let norm_seq = seqrec.normalize(false);
 
-        if sketch.sketch_method.as_str() == "mmhash64_xor_c" {
+        if sketch.sketch_method.contains("64") {
             for (_, (kmer_u64, _), _) in norm_seq.bit_kmers(sketch.ksize, true) {
                 sketch.insert_kmer_u64(kmer_u64);
             }
@@ -102,11 +108,50 @@ fn extract_kmer_hash(file: PathBuf, sketch: &mut Sketch) {
             }
         }
     }
+}
 
-    // Filter kmers
-    // for i in sketch.hash_set.clone() {
-    //     if sketch.cbf.estimate_count(&i) > 8 {
-    //         sketch.hash_set.remove(&i);
-    //     }
-    // }
+#[cfg(target_arch = "x86_64")]
+unsafe fn extract_kmer_hash_avx2(file: PathBuf, sketch: &mut Sketch) {
+    let mut fastx_reader = parse_fastx_file(&file).expect("Opening .fna files failed");
+
+    while let Some(record) = fastx_reader.next() {
+        let seqrec: needletail::parser::SequenceRecord<'_> = record.expect("invalid record");
+
+        // normalize to make sure all the bases are consistently capitalized
+        let norm_seq = seqrec.normalize(false);
+
+        let mut bitkmer_array: [i64; 4] = [0, 0, 0, 0];
+        let mut bitkmer_m256: __m256i = _mm256_setzero_si256();
+        let mut cnt: usize = 0;
+        for (_, (bit_kmer_u64, _), _) in norm_seq.bit_kmers(sketch.ksize, true) {
+            if cnt < 4 {
+                bitkmer_array[cnt] = bit_kmer_u64 as i64;
+                cnt += 1;
+            } else {
+                bitkmer_m256 = _mm256_set_epi64x(
+                    bitkmer_array[0],
+                    bitkmer_array[1],
+                    bitkmer_array[2],
+                    bitkmer_array[3],
+                );
+                sketch.insert_kmer_u64_avx2(bitkmer_m256);
+                cnt = 0;
+            }
+        }
+
+        if cnt > 0 {
+            bitkmer_m256 = match cnt {
+                1 => _mm256_set_epi64x(bitkmer_array[0], 0, 0, 0),
+                2 => _mm256_set_epi64x(bitkmer_array[0], bitkmer_array[1], 0, 0),
+                3 => _mm256_set_epi64x(bitkmer_array[0], bitkmer_array[1], bitkmer_array[2], 0),
+                _ => _mm256_set_epi64x(
+                    bitkmer_array[0],
+                    bitkmer_array[1],
+                    bitkmer_array[2],
+                    bitkmer_array[3],
+                ),
+            };
+            sketch.insert_kmer_u64_avx2(bitkmer_m256);
+        }
+    }
 }
