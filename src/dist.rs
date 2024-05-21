@@ -5,6 +5,7 @@ use crate::utils;
 use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 
+use std::arch::x86_64::*;
 use std::time::Instant;
 
 pub fn compute_hv_l2_norm(sketch: &mut Sketch) {
@@ -21,11 +22,80 @@ pub fn compute_pairwise_ani(
     norm2_q: i32,
     ksize: u8,
 ) -> f32 {
+    // Scalar-based inner product
     let dot_r_q: i32 = r
         .iter()
         .zip(q.iter())
         .map(|(x, y)| (*x as i32) * (*y as i32))
         .sum();
+
+    let jaccard: f32 = dot_r_q as f32 / (norm2_r + norm2_q - dot_r_q) as f32;
+    let ani: f32 = 1.0 + (2.0 / (1.0 / jaccard + 1.0)).ln() / (ksize as f32);
+
+    if ani.is_nan() {
+        0.0
+    } else {
+        ani.min(1.0).max(0.0) * 100.0
+    }
+}
+
+#[target_feature(enable = "avx2")]
+pub unsafe fn compute_pairwise_ani_avx2(
+    r: Vec<i16>,
+    norm2_r: i32,
+    q: Vec<i16>,
+    norm2_q: i32,
+    ksize: u8,
+) -> f32 {
+    // SIMD-based inner product
+    let len = r.len();
+    let mut dot_r_q: i32 = 0;
+    for i in 0..len / 16 {
+        let mm256_r = _mm256_set_epi16(
+            r[i * 16 + 0],
+            r[i * 16 + 1],
+            r[i * 16 + 2],
+            r[i * 16 + 3],
+            r[i * 16 + 4],
+            r[i * 16 + 5],
+            r[i * 16 + 6],
+            r[i * 16 + 7],
+            r[i * 16 + 8],
+            r[i * 16 + 9],
+            r[i * 16 + 10],
+            r[i * 16 + 11],
+            r[i * 16 + 12],
+            r[i * 16 + 13],
+            r[i * 16 + 14],
+            r[i * 16 + 15],
+        );
+        let mm256_q = _mm256_set_epi16(
+            q[i * 16 + 0],
+            q[i * 16 + 1],
+            q[i * 16 + 2],
+            q[i * 16 + 3],
+            q[i * 16 + 4],
+            q[i * 16 + 5],
+            q[i * 16 + 6],
+            q[i * 16 + 7],
+            q[i * 16 + 8],
+            q[i * 16 + 9],
+            q[i * 16 + 10],
+            q[i * 16 + 11],
+            q[i * 16 + 12],
+            q[i * 16 + 13],
+            q[i * 16 + 14],
+            q[i * 16 + 15],
+        );
+
+        let mm256_madd_32x8 = _mm256_madd_epi16(mm256_r, mm256_q);
+        let mm256_madd_32x4 = _mm256_hadd_epi32(mm256_madd_32x8, _mm256_setzero_si256());
+        let dot = _mm256_extract_epi32::<0>(mm256_madd_32x4)
+            + _mm256_extract_epi32::<1>(mm256_madd_32x4)
+            + _mm256_extract_epi32::<4>(mm256_madd_32x4)
+            + _mm256_extract_epi32::<5>(mm256_madd_32x4);
+        dot_r_q += dot;
+    }
 
     let jaccard: f32 = dot_r_q as f32 / (norm2_r + norm2_q - dot_r_q) as f32;
     let ani: f32 = 1.0 + (2.0 / (1.0 / jaccard + 1.0)).ln() / (ksize as f32);
@@ -202,8 +272,8 @@ pub fn dist(sketch_dist: &mut SketchDist) {
         "Ref and query sketches use different HV dimensions!"
     );
 
-    println!("STEP 1 took {:.3}s", tstart.elapsed().as_secs_f32());
-    let tstart = Instant::now();
+    // println!("STEP 1 took {:.3}s", tstart.elapsed().as_secs_f32());
+    // let tstart = Instant::now();
 
     if if_asym {
         // Decompress sketch HVs
@@ -239,13 +309,12 @@ pub fn dist(sketch_dist: &mut SketchDist) {
     }
 
     // println!("STEP 3 took {:.3}s", tstart.elapsed().as_secs_f32());
-    // let tstart = Instant::now();
+    let tstart = Instant::now();
 
     // Dump dist file
     utils::dump_ani_file(&sketch_dist);
 
     // println!("STEP 4 took {:.3}s", tstart.elapsed().as_secs_f32());
-    // let tstart = Instant::now();
 
     println!(
         "{} refs and {} queries took {:.3}s",
