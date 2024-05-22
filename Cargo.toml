@@ -12,6 +12,8 @@ regex = "1.9.3"
 
 [dependencies]
 log = "0.4.20"
+env_logger = "0.11.3"
+chrono = "0.4.38"
 glob = "0.3.1"
 indicatif = "0.17.7"
 clap = { version = "4.4.6", features = ["cargo"] }
@@ -27,12 +29,10 @@ indexmap = "2.0.2"
 
 needletail = "0.5.1"
 rust-seq2kminmers = "0.1.0"
-bio-seq = "0.10.0"
 
 ahash = "0.8.3"
 wyhash = "0.5.0"
 t1ha = "0.1.0"
-fxhash = "0.2.1"
 
 bloom = "0.3.2"
 

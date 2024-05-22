@@ -1,20 +1,38 @@
+use glob::glob;
+use log::{info, warn};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use chrono::Local;
 use clap::{arg, value_parser, Command};
+use env_logger::{Builder, Target};
+use log::LevelFilter;
+use std::io::Write;
 
-use crate::{params, types::*};
-
-use crate::hd;
+use crate::{hd, params, types::*};
 
 pub fn create_cli() -> CliParams {
+    Builder::new()
+        .format(|buf, record| {
+            writeln!(
+                buf,
+                "{} [{}] - {}",
+                Local::now().format("%Y-%m-%d-%H:%M:%S"),
+                record.level(),
+                record.args()
+            )
+        })
+        .filter(None, LevelFilter::Info)
+        .target(Target::Stdout)
+        .init();
+
     let cmd = Command::new("hyper-gen")
         .bin_name("hyper-gen")
         .subcommand_required(true)
         .version(params::VERSION)
         .about(
-            "HyperGen: Fast and memory-efficient genome sketching\n\n
-        1. Genome sketching using hyperdimensional computing (HDC):\n
+            "HyperGen: Fast and memory-efficient genome sketching in hyperdimensional space\n\n
+        1. Genome sketching using FracMinhash and hyperdimensional computing (HDC). Three file types (.fna .fa .fasta) are supported:\n
         hyper-gen-rust sketch -p {fna_path} -o {output_sketch_file} \n\n
         2. ANI estimation and database search:\n
         hyper-gen-rust dist -r {ref_sketch} -q {query_sketch} -o {output_ANI_results}",
@@ -22,7 +40,7 @@ pub fn create_cli() -> CliParams {
         .subcommand(
             // sketch command
             clap::command!(params::CMD_SKETCH).args(&[
-                arg!(-p --path <PATH> "Input folder path to sketch")
+                arg!(-p --path <PATH> "Input folder path to sketch").required(true)
                     .value_parser(value_parser!(PathBuf)),
                 arg!(-r --path_r <PATH_R> "Path to ref sketch file")
                     .default_value("1")
@@ -30,7 +48,7 @@ pub fn create_cli() -> CliParams {
                 arg!(-q --path_q <PATH_Q> "Path to query sketch file")
                     .default_value("1")
                     .value_parser(value_parser!(PathBuf)),
-                arg!(-o --out [OUT] "Output path ").value_parser(value_parser!(PathBuf)),
+                arg!(-o --out [OUT] "Output path ").required(true).value_parser(value_parser!(PathBuf)),
                 arg!(-t --thread <THREAD> "# of threads used for computation")
                     .default_value("16")
                     .value_parser(value_parser!(u8)),
@@ -52,7 +70,7 @@ pub fn create_cli() -> CliParams {
                 arg!(-d --hv_d <HD_D> "Dimension for hypervector")
                     .default_value("4096")
                     .value_parser(value_parser!(usize)),
-                arg!(--ani_th <ANI_TH> "ANI threshold")
+                arg!(-a --ani_th <ANI_TH> "ANI threshold")
                     .default_value("85.0")
                     .value_parser(value_parser!(f32)),
                 arg!(-D --device <DEVICE> "Device to run")
@@ -66,11 +84,11 @@ pub fn create_cli() -> CliParams {
                 arg!(-p --path <PATH> "Path to sketch file")
                     .default_value("1")
                     .value_parser(value_parser!(PathBuf)),
-                arg!(-r --path_r <PATH_R> "Path to ref sketch file")
+                arg!(-r --path_r <PATH_R> "Path to ref sketch file").required(true)
                     .value_parser(value_parser!(PathBuf)),
-                arg!(-q --path_q <PATH_Q> "Path to query sketch file")
+                arg!(-q --path_q <PATH_Q> "Path to query sketch file").required(true)
                     .value_parser(value_parser!(PathBuf)),
-                arg!(-o --out [OUT] "Output path ").value_parser(value_parser!(PathBuf)),
+                arg!(-o --out [OUT] "Output path ").required(true).value_parser(value_parser!(PathBuf)),
                 arg!(-t --thread <THREAD> "# of threads used for computation")
                     .default_value("16")
                     .value_parser(value_parser!(u8)),
@@ -92,7 +110,7 @@ pub fn create_cli() -> CliParams {
                 arg!(-d --hv_d <HD_D> "Dimension for hypervector")
                     .default_value("4096")
                     .value_parser(value_parser!(usize)),
-                arg!(--ani_th <ANI_TH> "ANI threshold")
+                arg!(-a --ani_th <ANI_TH> "ANI threshold")
                     .default_value("85.0")
                     .value_parser(value_parser!(f32)),
                 arg!(-D --device <DEVICE> "Device to run")
@@ -126,7 +144,7 @@ pub fn create_cli() -> CliParams {
                 arg!(-d --hv_d <HD_D> "Dimension for hypervector")
                     .default_value("4096")
                     .value_parser(value_parser!(usize)),
-                arg!(--ani_th <ANI_TH> "ANI threshold")
+                arg!(-a --ani_th <ANI_TH> "ANI threshold")
                     .default_value("85.0")
                     .value_parser(value_parser!(f32)),
             ]),
@@ -175,13 +193,28 @@ pub fn parse_cmd(cmd: Command) -> CliParams {
     cli_params
 }
 
+pub fn get_fasta_files(path: &PathBuf) -> Vec<PathBuf> {
+    // pub fn get_fasta_files(path: PathBuf) -> Vec<Result<PathBuf, GlobError>> {
+    let mut all_files = Vec::new();
+    for t in ["*.fna", "*.fa", "*.fasta"] {
+        let mut files: Vec<_> = glob(path.join(t).to_str().unwrap())
+            .expect("Failed to read glob pattern")
+            .map(|f| f.unwrap())
+            .collect();
+
+        all_files.append(&mut files);
+    }
+
+    all_files
+}
+
 pub fn dump_sketch(file_sketch: &Vec<Sketch>, params: &SketchParams) {
     let out_filename = params.out_file.to_str().unwrap();
 
-    assert!(
-        out_filename.ends_with(".sketch"),
-        "The output sketch file should have an extension of .sketch"
-    );
+    // assert!(
+    //     out_filename.ends_with(".sketch"),
+    //     "The output sketch file should have an extension of .sketch"
+    // );
 
     // Serialization
     let all_sketch = FileSketch {
@@ -208,12 +241,17 @@ pub fn dump_sketch(file_sketch: &Vec<Sketch>, params: &SketchParams) {
 
     // Dump sketch file
     let serialized = bincode::serialize::<FileSketch>(&all_sketch).unwrap();
+    let sketch_size_mb = serialized.len() as f32 / 1024.0 / 1024.0;
     fs::write(params.out_file.to_str().unwrap(), &serialized).expect("Dump sketch file failed!");
 
-    println!("Dump sketch file to {}", out_filename);
+    info!(
+        "Dump sketch file to {} with size {:.2} MB",
+        out_filename, sketch_size_mb
+    );
 }
 
 pub fn load_sketch(path: &Path) -> FileSketch {
+    info!("Loading sketch from {}", path.to_str().unwrap());
     let serialized = fs::read(path).expect("Opening sketch file failed!");
     let file_sketch = bincode::deserialize::<FileSketch>(&serialized[..]).unwrap();
 
@@ -222,22 +260,43 @@ pub fn load_sketch(path: &Path) -> FileSketch {
 
 pub fn dump_ani_file(sketch_dist: &SketchDist) {
     let mut csv_str = String::new();
+
+    let mut cnt: f32 = 0.0;
     for i in 0..sketch_dist.files.len() {
         if sketch_dist.ani[i] >= sketch_dist.ani_threshold {
             csv_str.push_str(&format!(
                 "{}\t{}\t{:.3}\n",
                 sketch_dist.files[i].0, sketch_dist.files[i].1, sketch_dist.ani[i]
             ));
+            cnt += 1.0;
         }
     }
 
     fs::write(sketch_dist.out_file.to_str().unwrap(), &csv_str.as_bytes())
         .expect("Dump ANI file failed!");
+
+    // Warning if output ANIs are too sparse
+    let total_dist = sketch_dist.files.len() as f32;
+    let perc = cnt / total_dist * 100.0;
+    if perc < 5.0 {
+        warn!(
+            "Output ANIs with threshold {:.1} are too divergent: {} of {} ({:.2}%) ANIs are reported",
+            sketch_dist.ani_threshold, cnt, total_dist, perc
+        );
+    } else {
+        info!(
+            "Output {} of {} ANIs above threshold {:.1} to file {}",
+            cnt,
+            total_dist,
+            sketch_dist.ani_threshold,
+            sketch_dist.out_file.to_str().unwrap()
+        )
+    }
 }
 
 use std::collections::HashMap;
 
-pub fn dump_sketch_to_txt(path: &Path) {
+pub fn dump_distribution_to_txt(path: &Path) {
     let mut file_sketch = load_sketch(path);
 
     hd::decompress_file_sketch(&mut file_sketch);

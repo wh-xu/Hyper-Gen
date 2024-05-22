@@ -5,10 +5,13 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Instant;
 
-use crate::fastx_reader;
+use crate::types::*;
+use crate::{dist, fastx_reader, hd, utils};
 use glob::glob;
 use indicatif::{ProgressBar, ProgressStyle};
+use log::info;
 use rayon::prelude::*;
+use std::path::PathBuf;
 
 use needletail::{parse_fastx_file, Sequence};
 
@@ -30,9 +33,7 @@ const SEQ_NT4_TABLE: [u8; 256] = [
 
 pub fn sketch_cpu_parallel(path_fna: &String, ksize: usize, scaled: u64) -> Vec<HashSet<u64>> {
     // get files
-    let files: Vec<_> = glob(Path::new(&path_fna).join("*.fna").to_str().unwrap())
-        .expect("Failed to read glob pattern")
-        .collect();
+    let files = utils::get_fasta_files(&PathBuf::from(path_fna));
 
     // progress bar
     let pb = ProgressBar::new(files.len() as u64);
@@ -49,9 +50,8 @@ pub fn sketch_cpu_parallel(path_fna: &String, ksize: usize, scaled: u64) -> Vec<
     let index_vec: Vec<usize> = (0..files.len()).collect();
     let sketch_kmer_sets: Vec<HashSet<u64>> = index_vec
         .par_iter()
-        .map(|i| {
-            let mut fastx_reader =
-                parse_fastx_file(&files[*i].as_ref().unwrap()).expect("Opening .fna files failed");
+        .map(|&i| {
+            let mut fastx_reader = parse_fastx_file(&files[i]).expect("Opening .fna files failed");
 
             let mut sketch_kmer_set = HashSet::<u64>::default();
 
@@ -72,7 +72,7 @@ pub fn sketch_cpu_parallel(path_fna: &String, ksize: usize, scaled: u64) -> Vec<
         })
         .collect();
 
-    pb.finish();
+    pb.finish_and_clear();
 
     sketch_kmer_sets
 }
@@ -84,9 +84,7 @@ pub fn cuda_mmhash_bitpack_parallel(
     scaled: u64,
 ) -> Vec<HashSet<u64>> {
     // get files
-    let files: Vec<_> = glob(Path::new(&path_fna).join("*.fna").to_str().unwrap())
-        .expect("Failed to read glob pattern")
-        .collect();
+    let files = utils::get_fasta_files(&PathBuf::from(path_fna));
 
     // progress bar
     let pb = ProgressBar::new(files.len() as u64);
@@ -110,14 +108,14 @@ pub fn cuda_mmhash_bitpack_parallel(
     let index_vec: Vec<usize> = (0..files.len()).collect();
     let sketch_kmer_sets: Vec<HashSet<u64>> = index_vec
         .par_iter()
-        .map(|i| {
+        .map(|&i| {
             // NOTE: this is the important call to have
             // without this, you'll get a CUDA_ERROR_INVALID_CONTEXT
             gpu.bind_to_thread().unwrap();
 
             // let now = Instant::now();
 
-            let fna_seqs = fastx_reader::read_merge_seq(files[*i].as_ref().unwrap());
+            let fna_seqs = fastx_reader::read_merge_seq(&files[i]);
 
             // println!("Time taken to extract seq: {:.2?}", now.elapsed());
 
@@ -126,20 +124,12 @@ pub fn cuda_mmhash_bitpack_parallel(
             let bp_per_thread = 512;
             let n_threads = (n_kmers + bp_per_thread - 1) / bp_per_thread;
 
-            // copy to GPU
-            // let now = Instant::now();
-
             let gpu_seq = gpu.htod_copy(fna_seqs).unwrap();
             let gpu_seq_nt4_table = gpu.htod_copy(SEQ_NT4_TABLE.to_vec()).unwrap();
             // allocate 4x more space that expected
             let n_hash_per_thread = max(bp_per_thread / scaled as usize * 3, 8);
             let n_hash_array = n_hash_per_thread * n_threads;
             let gpu_kmer_bit_hash = gpu.alloc_zeros::<u64>(n_hash_array).unwrap();
-
-            // println!("Time taken to copy to gpu: {:.2?}", now.elapsed());
-
-            // execute kernel
-            // let now = Instant::now();
 
             let config = LaunchConfig::for_num_elems(n_threads as u32);
             let params = (
@@ -167,14 +157,13 @@ pub fn cuda_mmhash_bitpack_parallel(
                 }
             }
 
-            // println!("Time taken to postprocess: {:.2?}", now.elapsed());
             pb.inc(1);
             pb.eta();
             sketch_kmer_set
         })
         .collect();
 
-    pb.finish();
+    pb.finish_and_clear();
 
     sketch_kmer_sets
 }
@@ -222,7 +211,6 @@ pub fn cuda_t1ha2_hash_parallel(
 
             let fna_seqs = fastx_reader::read_merge_seq(files[*i].as_ref().unwrap());
 
-            // println!("{:?}", String::from_utf8(fna_seqs.clone()).unwrap());
             println!("Time taken to extract seq: {:.2?}", now.elapsed());
 
             let n_bps = fna_seqs.len();
@@ -230,7 +218,6 @@ pub fn cuda_t1ha2_hash_parallel(
             let kmer_per_thread = 512;
             let n_threads = (n_kmers + kmer_per_thread - 1) / kmer_per_thread;
 
-            // println!("{:?} {} {}", files[*i].as_ref().unwrap(), n_bps, n_threads);
             // copy to GPU
             let now = Instant::now();
             let gpu_seq = gpu.htod_copy(fna_seqs).unwrap();
@@ -278,15 +265,10 @@ pub fn cuda_t1ha2_hash_parallel(
         })
         .collect();
 
-    pb.finish();
+    pb.finish_and_clear();
 
     sketch_kmer_sets
 }
-
-use crate::types::*;
-use crate::{dist, hd, utils};
-use log::info;
-use std::path::PathBuf;
 
 //
 fn extract_kmer_mmhash_bitpack_cuda(file: &PathBuf, sketch: &mut Sketch, gpu: &Arc<CudaDevice>) {
@@ -382,11 +364,9 @@ fn extract_kmer_t1ha2_cuda(file: &PathBuf, sketch: &mut Sketch, gpu: &Arc<CudaDe
 //  Sketch function to sketch all .fna files in folder path
 #[cfg(target_arch = "x86_64")]
 pub fn sketch_cuda(params: SketchParams) {
-    let files: Vec<_> = glob(params.path.join("*.fna").to_str().unwrap())
-        .expect("Failed to read glob pattern")
-        .collect();
+    let files = utils::get_fasta_files(&params.path);
 
-    info!("Start sketching...");
+    info!("Start GPU sketching...");
 
     // progress bar
     let pb = ProgressBar::new(files.len() as u64);
@@ -414,12 +394,12 @@ pub fn sketch_cuda(params: SketchParams) {
     let index_vec: Vec<usize> = (0..files.len()).collect();
     let file_sketch: Vec<Sketch> = index_vec
         .par_iter()
-        .map(|i| {
+        .map(|&i| {
             // NOTE: this is the important call to have
             // without this, you'll get a CUDA_ERROR_INVALID_CONTEXT
             gpu.bind_to_thread().unwrap();
 
-            let file = files[*i].as_ref().unwrap().clone();
+            let file = files[i].clone();
             let mut sketch = Sketch::new(
                 String::from(file.file_name().unwrap().to_str().unwrap()),
                 &params,
@@ -456,10 +436,10 @@ pub fn sketch_cuda(params: SketchParams) {
         })
         .collect();
 
-    pb.finish();
+    pb.finish_and_clear();
 
-    println!(
-        "Sketching {} files took {:.3}s\t {:.1} files/s",
+    info!(
+        "Sketching {} files took {:.2}s - Speed: {:.1} files/s",
         files.len(),
         pb.elapsed().as_secs_f32(),
         (files.len() as f32 / pb.elapsed().as_secs_f32())

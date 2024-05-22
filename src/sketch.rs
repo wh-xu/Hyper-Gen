@@ -1,6 +1,5 @@
 use std::{arch::x86_64::*, path::PathBuf};
 
-use glob::glob;
 use log::info;
 
 use indicatif::{ProgressBar, ProgressStyle};
@@ -14,9 +13,7 @@ use crate::{dist, hd, utils};
 ///  Sketch function to sketch all .fna files in folder path
 #[cfg(target_arch = "x86_64")]
 pub fn sketch(params: SketchParams) {
-    let files: Vec<_> = glob(params.path.join("*.fna").to_str().unwrap())
-        .expect("Failed to read glob pattern")
-        .collect();
+    let files = utils::get_fasta_files(&params.path);
 
     info!("Start sketching...");
 
@@ -32,8 +29,8 @@ pub fn sketch(params: SketchParams) {
     let index_vec: Vec<usize> = (0..files.len()).collect();
     let file_sketch: Vec<Sketch> = index_vec
         .par_iter()
-        .map(|i| {
-            let file = files[*i].as_ref().unwrap().clone();
+        .map(|&i| {
+            let file = files[i].clone();
             let mut sketch = Sketch::new(
                 String::from(file.file_name().unwrap().to_str().unwrap()),
                 &params,
@@ -73,10 +70,10 @@ pub fn sketch(params: SketchParams) {
         })
         .collect();
 
-    pb.finish();
+    pb.finish_and_clear();
 
-    println!(
-        "Sketching {} files took {:.3}s\t {:.1} files/s",
+    info!(
+        "Sketching {} files took {:.2}s - Speed: {:.1} files/s",
         files.len(),
         pb.elapsed().as_secs_f32(),
         (files.len() as f32 / pb.elapsed().as_secs_f32())
@@ -121,7 +118,7 @@ unsafe fn extract_kmer_hash_avx2(file: PathBuf, sketch: &mut Sketch) {
         let norm_seq = seqrec.normalize(false);
 
         let mut bitkmer_array: [i64; 4] = [0, 0, 0, 0];
-        let mut bitkmer_m256: __m256i = _mm256_setzero_si256();
+        let mut bitkmer_m256: __m256i;
         let mut cnt: usize = 0;
         for (_, (bit_kmer_u64, _), _) in norm_seq.bit_kmers(sketch.ksize, true) {
             if cnt < 4 {

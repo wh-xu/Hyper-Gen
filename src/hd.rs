@@ -1,5 +1,5 @@
+use log::info;
 use std::arch::x86_64::*;
-// use std::time::Instant;
 
 use crate::types::{FileSketch, Sketch};
 use rand::{RngCore, SeedableRng};
@@ -109,13 +109,9 @@ pub fn encode_hash_hd(sketch: &mut Sketch) {
 #[target_feature(enable = "avx2")]
 pub unsafe fn compress_hd_sketch(sketch: &mut Sketch) {
     // find the lossless quantization bit width
-    // let tstart = Instant::now();
 
     let min_hv = sketch.hv.iter().min().unwrap().clone();
     let max_hv = sketch.hv.iter().max().unwrap().clone();
-
-    // println!("Step 0 took {:.3}s", tstart.elapsed().as_secs_f32());
-    // let tstart = Instant::now();
 
     let mut quant_bit: i16 = 6;
     loop {
@@ -133,8 +129,7 @@ pub unsafe fn compress_hd_sketch(sketch: &mut Sketch) {
     }
     sketch.hv_quant_bits = quant_bit as u8;
 
-    // println!("Step 1 took {:.3}s", tstart.elapsed().as_secs_f32());
-    // let tstart = Instant::now();
+    // info!("Compressing hypervectors to {} bits", sketch.hv_quant_bits);
 
     // bit packing
     if is_x86_feature_detected!("avx2") {
@@ -143,9 +138,6 @@ pub unsafe fn compress_hd_sketch(sketch: &mut Sketch) {
 
         let bitpacker = BitPacker8x::new();
         let bits_per_block = quant_bit as usize * 32;
-
-        // println!("Step 2 took {:.3}s", tstart.elapsed().as_secs_f32());
-        // let tstart = Instant::now();
 
         let mut hv_compress_bits = vec![0u8; (quant_bit as usize) * (sketch.hv_d >> 3)];
         for i in 0..(sketch.hv_d / BitPacker8x::BLOCK_LEN) {
@@ -156,14 +148,9 @@ pub unsafe fn compress_hd_sketch(sketch: &mut Sketch) {
             );
         }
 
-        // println!("Step 3 took {:.3}s", tstart.elapsed().as_secs_f32());
-        // let tstart = Instant::now();
-
         sketch
             .hv
             .clone_from(&hv_compress_bits[..].align_to::<i16>().1.to_vec());
-
-        // println!("Step 4 took {:.3}s", tstart.elapsed().as_secs_f32());
     } else {
         let len_bit_vec_u16 = (quant_bit as usize * sketch.hv_d + 16) / 16;
         let mut hv_compress_bits: Vec<i16> = vec![0; len_bit_vec_u16];
@@ -182,8 +169,6 @@ pub unsafe fn decompress_hd_sketch(hv: &Vec<i16>, hv_d: usize, quant_bit: u8) ->
 
     if is_x86_feature_detected!("avx2") {
         // SIMD-based Bit Unpacking
-        // let tstart = Instant::now();
-
         let bitpacker = BitPacker8x::new();
         let bits_per_block = quant_bit as usize * 32;
 
@@ -201,9 +186,6 @@ pub unsafe fn decompress_hd_sketch(hv: &Vec<i16>, hv_d: usize, quant_bit: u8) ->
             );
         }
 
-        // println!("Step 2 took {:.3}s", tstart.elapsed().as_secs_f32());
-        // let tstart = Instant::now();
-
         let offset: i16 = 1 << (quant_bit - 1);
         hv_decompressed.clone_from(
             &_hv_decompressed
@@ -211,8 +193,6 @@ pub unsafe fn decompress_hd_sketch(hv: &Vec<i16>, hv_d: usize, quant_bit: u8) ->
                 .map(|i| (i as i16 - offset))
                 .collect(),
         );
-
-        // println!("Step 3 took {:.3}s", tstart.elapsed().as_secs_f32());
     } else {
         // Scalar Bit Unpacking
         for i in 0..(quant_bit as usize * hv_d) {
@@ -235,9 +215,10 @@ pub unsafe fn decompress_hd_sketch(hv: &Vec<i16>, hv_d: usize, quant_bit: u8) ->
 }
 
 pub fn decompress_file_sketch(file_sketch: &mut FileSketch) {
+    info!("Decompressing sketch with HV dim={}", file_sketch.hv_d);
+
     let hv_dim = file_sketch.hv_d.clone();
     let quant_bits_vec = file_sketch.hv_quant_bits_vec.clone();
-    // let hv_norm_2: Vec<i32> = file_sketch.hv_norm_2.clone();
 
     let index_hv: Vec<usize> = (0..file_sketch.hv_vec.len()).collect();
     let compressed_hv_vec: Vec<Vec<i16>> = file_sketch.hv_vec.clone();

@@ -19,24 +19,27 @@ We recommend installing _HyperGen_ using the following command:
 git clone https://github.com/wh-xu/Hyper-Gen.git
 cd Hyper-Gen
 
-cargo install --path . --root ~/.cargo
+cargo install --path .
 ```
 
 ### Usage
 Current version supports following functions:
 
-#### 1. Genome sketching
+#### 1. Genome sketching for .fa/.fna/.fasta files
 ```sh
 Example:
-hyper-gen-rust sketch -p ./data/*.fna -o ./fna.sketch
+hyper-gen-rust sketch -p ./data -o ./fna.sketch
 
 Positional arguments:
 -p, --path <PATH>               Input folder path to sketch
 -o, --out <OUT>                 Output path 
 -t, --thread <THREAD>           Threads used for computation [default: 16]
+-C, --canonical <CANONICAL>     If use canonical kmer [default: true]
 -k, --ksize <KSIZE>             k-mer size for sketching [default: 21]
+-S, --seed <SEED>               Hash seed [default: 123]
 -s, --scaled <SCALED>           Scaled factor for FracMinHash [default: 1500]
 -d, --hv_d <HD_D>               Dimension for hypervector [default: 4096]
+-D, --device <DEVICE>           Device to run [default: cpu] [possible values: cpu, gpu]
 ```
 
 
@@ -50,7 +53,7 @@ Positional arguments:
 -q, --path_q <PATH_Q>           Path to query sketch file
 -o, --out <OUT>                 Output path 
 -t, --thread <THREAD>           Threads used for computation [default: 16]
---ani_th <ANI_TH>               ANI threshold [default: 85.0]
+-a, --ani_th <ANI_TH>           ANI threshold [default: 85.0]
 ```
 
 

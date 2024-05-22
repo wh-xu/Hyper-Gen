@@ -1,12 +1,13 @@
 use crate::hd;
 use crate::types::*;
 use crate::utils;
+use std::time::Instant;
 
 use indicatif::{ProgressBar, ProgressStyle};
+use log::info;
 use rayon::prelude::*;
 
 use std::arch::x86_64::*;
-use std::time::Instant;
 
 pub fn compute_hv_l2_norm(sketch: &mut Sketch) {
     sketch.hv_l2_norm_sq = sketch
@@ -114,6 +115,8 @@ pub fn compute_hv_ani(
     ksize: u8,
     if_asymmetric: bool,
 ) {
+    info!("Computing ANI..");
+
     let num_ref_files = ref_filesketch.hv_vec.len();
     let num_query_files = query_filesketch.hv_vec.len();
 
@@ -169,7 +172,7 @@ pub fn compute_hv_ani(
         })
         .collect();
 
-    pb.finish();
+    pb.finish_and_clear();
 }
 
 pub fn compute_compressed_hv_ani(
@@ -179,6 +182,8 @@ pub fn compute_compressed_hv_ani(
     ksize: u8,
     if_asymmetric: bool,
 ) {
+    info!("Computing ANI..");
+
     let num_ref_files = ref_filesketch.hv_vec.len();
     let num_query_files = query_filesketch.hv_vec.len();
 
@@ -224,8 +229,6 @@ pub fn compute_compressed_hv_ani(
             pb.inc(1);
             pb.eta();
 
-            // println!("{} vs. {}", ref_filesketch.0[*i], query_filesketch.0[*j]);
-
             let ref_hv_decompressed = unsafe {
                 hd::decompress_hd_sketch(
                     &ref_filesketch.hv_vec[*i],
@@ -245,12 +248,11 @@ pub fn compute_compressed_hv_ani(
         })
         .collect();
 
-    pb.finish();
+    pb.finish_and_clear();
 }
 
 pub fn dist(sketch_dist: &mut SketchDist) {
     let tstart = Instant::now();
-
     let if_asym = sketch_dist.path_ref_sketch == sketch_dist.path_query_sketch;
 
     // Load ref and query sketch files
@@ -272,20 +274,10 @@ pub fn dist(sketch_dist: &mut SketchDist) {
         "Ref and query sketches use different HV dimensions!"
     );
 
-    // println!("STEP 1 took {:.3}s", tstart.elapsed().as_secs_f32());
-    // let tstart = Instant::now();
-
     if if_asym {
         // Decompress sketch HVs
         hd::decompress_file_sketch(&mut ref_file_sketch);
-
-        // println!("STEP 2.1 took {:.3}s", tstart.elapsed().as_secs_f32());
-        // let tstart = Instant::now();
-
         hd::decompress_file_sketch(&mut query_file_sketch);
-
-        // println!("STEP 2.2 took {:.3}s", tstart.elapsed().as_secs_f32());
-        // let tstart = Instant::now();
 
         // Compute distance for decompressed sketch
         compute_hv_ani(
@@ -308,16 +300,11 @@ pub fn dist(sketch_dist: &mut SketchDist) {
         );
     }
 
-    // println!("STEP 3 took {:.3}s", tstart.elapsed().as_secs_f32());
-    let tstart = Instant::now();
-
     // Dump dist file
     utils::dump_ani_file(&sketch_dist);
 
-    // println!("STEP 4 took {:.3}s", tstart.elapsed().as_secs_f32());
-
-    println!(
-        "{} refs and {} queries took {:.3}s",
+    info!(
+        "Computed ANIs for {} ref files and {} query files took {:.3}s",
         ref_file_sketch.file_vec.len(),
         query_file_sketch.file_vec.len(),
         tstart.elapsed().as_secs_f32()
