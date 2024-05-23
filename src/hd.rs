@@ -108,8 +108,13 @@ pub fn encode_hash_hd(sketch: &mut Sketch) {
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub unsafe fn compress_hd_sketch(sketch: &mut Sketch) {
-    // find the lossless quantization bit width
+    // scale HV values
+    let scale = sketch.hv_quant_scale;
+    for i in 0..sketch.hv.len() {
+        sketch.hv[i] = (sketch.hv[i] as f32 * scale) as i16;
+    }
 
+    // find the lossless quantization bit width
     let min_hv = sketch.hv.iter().min().unwrap().clone();
     let max_hv = sketch.hv.iter().max().unwrap().clone();
 

@@ -6,8 +6,6 @@ use t1ha;
 
 use serde::{Deserialize, Serialize};
 
-// type HashSetFast<K> = HashSet<K, BuildHasherDefault<xxhash_rust::xxh3::Xxh3>>;
-
 #[inline]
 pub fn mm_hash(bytes: &[u8]) -> usize {
     let mut key = usize::from_ne_bytes(bytes.try_into().unwrap());
@@ -74,9 +72,9 @@ pub struct CliParams {
     pub sketch_method: String,
     pub canonical: bool,
     pub device: String,
-    // pub min_kmer_cnt: u32,
     pub scaled: u64,
     pub hv_d: usize,
+    pub hv_quant_scale: f32,
     pub ani_threshold: f32,
     pub if_compressed: bool,
 
@@ -91,9 +89,9 @@ pub struct SketchParams {
     pub device: String,
     pub ksize: u8,
     pub seed: u64,
-    // pub min_kmer_cnt: u32,
     pub scaled: u64,
     pub hv_d: usize,
+    pub hv_quant_scale: f32,
     pub if_compressed: bool,
 }
 
@@ -107,9 +105,9 @@ impl Default for SketchParams {
             device: String::from("cpu"),
             ksize: (21),
             seed: (123),
-            // min_kmer_cnt: (1),
             scaled: (1500),
             hv_d: (4096),
+            hv_quant_scale: (1.0),
             if_compressed: (true),
         }
     }
@@ -125,9 +123,9 @@ impl SketchParams {
         new_sketch.device = params.device.clone();
         new_sketch.ksize = params.ksize;
         new_sketch.seed = params.seed;
-        // new_sketch.min_kmer_cnt = params.min_kmer_cnt;
         new_sketch.scaled = params.scaled;
         new_sketch.hv_d = params.hv_d;
+        new_sketch.hv_quant_scale = params.hv_quant_scale;
         new_sketch.if_compressed = params.if_compressed;
         new_sketch
     }
@@ -139,11 +137,10 @@ pub struct Sketch {
     pub canonical: bool,
     pub ksize: u8,
     pub seed: u64,
-    // pub min_kmer_cnt: u32,
     pub scaled: u64,
     pub threshold: u64,
     pub hash_set: HashSet<u64>,
-    // pub hash_set: HashSetFast<u64>,
+    pub hv_quant_scale: f32,
     pub hv_quant_bits: u8,
     pub hv_d: usize,
     pub hv: Vec<i16>,
@@ -158,10 +155,10 @@ impl Default for Sketch {
             canonical: (true),
             ksize: (21),
             seed: (123),
-            // min_kmer_cnt: (1),
             scaled: (2000),
             threshold: (u64::MAX / 2000),
             hash_set: HashSet::default(),
+            hv_quant_scale: (1.0),
             hv_quant_bits: (0),
             hv_d: (4096),
             hv: (vec![]),
@@ -178,9 +175,9 @@ impl Sketch {
         new_sketch.canonical = params.canonical;
         new_sketch.ksize = params.ksize;
         new_sketch.seed = params.seed;
-        // new_sketch.min_kmer_cnt = params.min_kmer_cnt;
         new_sketch.scaled = params.scaled;
         new_sketch.hv_d = params.hv_d;
+        new_sketch.hv_quant_scale = params.hv_quant_scale;
         new_sketch.threshold = u64::MAX / params.scaled;
         new_sketch
     }

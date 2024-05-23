@@ -70,6 +70,9 @@ pub fn create_cli() -> CliParams {
                 arg!(-d --hv_d <HD_D> "Dimension for hypervector")
                     .default_value("4096")
                     .value_parser(value_parser!(usize)),
+                arg!(-Q --quant_scale <HD_D> "Scaling factor for HV quantization")
+                    .default_value("1.0")
+                    .value_parser(value_parser!(f32)),
                 arg!(-a --ani_th <ANI_TH> "ANI threshold")
                     .default_value("85.0")
                     .value_parser(value_parser!(f32)),
@@ -110,6 +113,9 @@ pub fn create_cli() -> CliParams {
                 arg!(-d --hv_d <HD_D> "Dimension for hypervector")
                     .default_value("4096")
                     .value_parser(value_parser!(usize)),
+                arg!(-Q --quant_scale <HD_D> "Scaling factor for HV quantization")
+                    .default_value("1.0")
+                    .value_parser(value_parser!(f32)),
                 arg!(-a --ani_th <ANI_TH> "ANI threshold")
                     .default_value("85.0")
                     .value_parser(value_parser!(f32)),
@@ -144,6 +150,9 @@ pub fn create_cli() -> CliParams {
                 arg!(-d --hv_d <HD_D> "Dimension for hypervector")
                     .default_value("4096")
                     .value_parser(value_parser!(usize)),
+                arg!(-Q --quant_scale <HD_D> "Scaling factor for HV quantization")
+                    .default_value("1.0")
+                    .value_parser(value_parser!(f32)),
                 arg!(-a --ani_th <ANI_TH> "ANI threshold")
                     .default_value("85.0")
                     .value_parser(value_parser!(f32)),
@@ -184,6 +193,7 @@ pub fn parse_cmd(cmd: Command) -> CliParams {
         seed: matches.get_one::<u64>("seed").expect("").clone(),
         scaled: matches.get_one::<u64>("scaled").expect("").clone(),
         hv_d: matches.get_one::<usize>("hv_d").expect("").clone(),
+        hv_quant_scale: matches.get_one::<f32>("quant_scale").expect("").clone(),
         ani_threshold: matches.get_one::<f32>("ani_th").expect("").clone(),
         if_compressed: true, // TODO
         threads: matches.get_one::<u8>("thread").expect("").clone(),
