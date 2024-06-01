@@ -269,16 +269,29 @@ pub fn load_sketch(path: &Path) -> FileSketch {
 }
 
 pub fn dump_ani_file(sketch_dist: &SketchDist) {
-    let mut csv_str = String::new();
+    // Sort based on ANIs
+    let mut indices = (0..sketch_dist.ani.len()).collect::<Vec<_>>();
+    indices.sort_by(|&i1, &i2| {
+        sketch_dist.ani[i1]
+            .partial_cmp(&sketch_dist.ani[i2])
+            .unwrap()
+    });
+    indices.reverse();
 
+    // Dump in order
+    let mut csv_str = String::new();
     let mut cnt: f32 = 0.0;
     for i in 0..sketch_dist.files.len() {
-        if sketch_dist.ani[i] >= sketch_dist.ani_threshold {
+        if sketch_dist.ani[indices[i]] >= sketch_dist.ani_threshold {
             csv_str.push_str(&format!(
                 "{}\t{}\t{:.3}\n",
-                sketch_dist.files[i].0, sketch_dist.files[i].1, sketch_dist.ani[i]
+                sketch_dist.files[indices[i]].0,
+                sketch_dist.files[indices[i]].1,
+                sketch_dist.ani[indices[i]]
             ));
             cnt += 1.0;
+        } else {
+            break;
         }
     }
 
