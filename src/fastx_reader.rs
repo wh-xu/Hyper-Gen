@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
+// Read merged sequences from a genome file into single u8 vector
 pub fn read_merge_seq(file_name: &PathBuf) -> Vec<u8> {
     let mut fna_seqs = Vec::<u8>::new();
 
@@ -12,7 +13,7 @@ pub fn read_merge_seq(file_name: &PathBuf) -> Vec<u8> {
     while reader.read_line(&mut buf).unwrap() > 0 {
         if !buf.starts_with('>') {
             if buf.ends_with('\n') {
-                buf.pop(); //remove \n character
+                buf.pop(); // remove \n character
             }
             if buf.ends_with('\r') {
                 buf.pop();

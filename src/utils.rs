@@ -1,4 +1,6 @@
 use glob::glob;
+use indicatif::{ProgressBar, ProgressStyle};
+
 use log::{info, warn};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -218,62 +220,48 @@ pub fn get_fasta_files(path: &PathBuf) -> Vec<PathBuf> {
     all_files
 }
 
-pub fn dump_sketch(file_sketch: &Vec<Sketch>, params: &SketchParams) {
-    let out_filename = params.out_file.to_str().unwrap();
+pub fn get_progress_bar(n_file: usize) -> ProgressBar {
+    let pb = ProgressBar::new(n_file as u64);
+    pb.set_style(
+        ProgressStyle::default_bar()
+            .template("{wide_bar} {pos}/{len} ({percent}%) - Elapsed: {elapsed_precise}, ETA: {eta_precise}")
+            .unwrap()
+    );
 
-    // assert!(
-    //     out_filename.ends_with(".sketch"),
-    //     "The output sketch file should have an extension of .sketch"
-    // );
+    pb
+}
+
+pub fn dump_sketch(file_sketch: &Vec<FileSketch>, out_file_path: &PathBuf) {
+    let out_filename = out_file_path.to_str().unwrap();
 
     // Serialization
-    let all_sketch = FileSketch {
-        ksize: params.ksize,
-        scaled: params.scaled,
-        hv_d: params.hv_d,
-        hv_norm_2: file_sketch
-            .into_iter()
-            .map(|s| s.hv_l2_norm_sq.clone())
-            .collect::<Vec<i32>>(),
-        hv_quant_bits_vec: file_sketch
-            .into_iter()
-            .map(|s| s.hv_quant_bits.clone())
-            .collect::<Vec<u8>>(),
-        file_vec: file_sketch
-            .into_iter()
-            .map(|s| s.file_name.clone())
-            .collect::<Vec<String>>(),
-        hv_vec: file_sketch
-            .into_iter()
-            .map(|s| s.hv.clone())
-            .collect::<Vec<Vec<i16>>>(),
-    };
+    let serialized = bincode::serialize::<Vec<FileSketch>>(&file_sketch).unwrap();
 
     // Dump sketch file
-    let serialized = bincode::serialize::<FileSketch>(&all_sketch).unwrap();
-    let sketch_size_mb = serialized.len() as f32 / 1024.0 / 1024.0;
-    fs::write(params.out_file.to_str().unwrap(), &serialized).expect("Dump sketch file failed!");
+    fs::write(out_filename, &serialized).expect("Dump sketch file failed!");
 
+    let sketch_size_mb = serialized.len() as f32 / 1024.0 / 1024.0;
     info!(
         "Dump sketch file to {} with size {:.2} MB",
         out_filename, sketch_size_mb
     );
 }
 
-pub fn load_sketch(path: &Path) -> FileSketch {
+pub fn load_sketch(path: &Path) -> Vec<FileSketch> {
     info!("Loading sketch from {}", path.to_str().unwrap());
     let serialized = fs::read(path).expect("Opening sketch file failed!");
-    let file_sketch = bincode::deserialize::<FileSketch>(&serialized[..]).unwrap();
+    let file_sketch = bincode::deserialize::<Vec<FileSketch>>(&serialized[..]).unwrap();
 
     file_sketch
 }
 
 pub fn dump_ani_file(sketch_dist: &SketchDist) {
     // Sort based on ANIs
-    let mut indices = (0..sketch_dist.ani.len()).collect::<Vec<_>>();
+    let mut indices = (0..sketch_dist.file_ani.len()).collect::<Vec<_>>();
     indices.sort_by(|&i1, &i2| {
-        sketch_dist.ani[i1]
-            .partial_cmp(&sketch_dist.ani[i2])
+        sketch_dist.file_ani[i1]
+            .1
+            .partial_cmp(&sketch_dist.file_ani[i2].1)
             .unwrap()
     });
     indices.reverse();
@@ -281,13 +269,13 @@ pub fn dump_ani_file(sketch_dist: &SketchDist) {
     // Dump in order
     let mut csv_str = String::new();
     let mut cnt: f32 = 0.0;
-    for i in 0..sketch_dist.files.len() {
-        if sketch_dist.ani[indices[i]] >= sketch_dist.ani_threshold {
+    for i in 0..sketch_dist.file_ani.len() {
+        if sketch_dist.file_ani[indices[i]].1 >= sketch_dist.ani_threshold {
             csv_str.push_str(&format!(
                 "{}\t{}\t{:.3}\n",
-                sketch_dist.files[indices[i]].0,
-                sketch_dist.files[indices[i]].1,
-                sketch_dist.ani[indices[i]]
+                sketch_dist.file_ani[indices[i]].0 .0,
+                sketch_dist.file_ani[indices[i]].0 .1,
+                sketch_dist.file_ani[indices[i]].1
             ));
             cnt += 1.0;
         } else {
@@ -299,7 +287,7 @@ pub fn dump_ani_file(sketch_dist: &SketchDist) {
         .expect("Dump ANI file failed!");
 
     // Warning if output ANIs are too sparse
-    let total_dist = sketch_dist.files.len() as f32;
+    let total_dist = sketch_dist.file_ani.len() as f32;
     let perc = cnt / total_dist * 100.0;
     if perc < 5.0 {
         warn!(
@@ -325,7 +313,9 @@ pub fn dump_distribution_to_txt(path: &Path) {
     hd::decompress_file_sketch(&mut file_sketch);
 
     // Write to files
-    let data = file_sketch.hv_vec;
+    let data: Vec<Vec<i16>> = (0..file_sketch.len())
+        .map(|i| file_sketch[i].hv.clone())
+        .collect();
 
     // Create a histogram
     let mut hist: HashMap<i16, u32> = HashMap::new();

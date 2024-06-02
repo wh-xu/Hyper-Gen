@@ -1,6 +1,6 @@
-use std::{arch::x86_64::*, path::PathBuf};
-
+use std::arch::x86_64::*;
 use std::collections::HashSet;
+use std::path::PathBuf;
 
 use t1ha;
 
@@ -226,11 +226,13 @@ impl Sketch {
 pub struct FileSketch {
     pub ksize: u8,
     pub scaled: u64,
+    pub canonical: bool,
+    pub seed: u64,
     pub hv_d: usize,
-    pub hv_quant_bits_vec: Vec<u8>,
-    pub hv_norm_2: Vec<i32>,
-    pub file_vec: Vec<String>,
-    pub hv_vec: Vec<Vec<i16>>,
+    pub hv_quant_bits: u8,
+    pub hv_norm_2: i32,
+    pub file_str: String,
+    pub hv: Vec<i16>,
 }
 
 pub struct SketchDist {
@@ -239,9 +241,8 @@ pub struct SketchDist {
     pub out_file: PathBuf,
     pub ksize: u8,
     pub hv_d: usize,
-    pub files: Vec<(String, String)>,
-    pub ani: Vec<f32>,
     pub ani_threshold: f32,
+    pub file_ani: Vec<((String, String), f32)>,
 }
 
 impl Default for SketchDist {
@@ -252,9 +253,8 @@ impl Default for SketchDist {
             out_file: (PathBuf::new()),
             ksize: (21),
             hv_d: (1024),
-            files: (vec![]),
-            ani: (vec![]),
             ani_threshold: (85.0),
+            file_ani: (Vec::<((String, String), f32)>::new()),
         }
     }
 }
