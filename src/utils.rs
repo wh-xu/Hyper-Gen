@@ -236,6 +236,7 @@ pub fn dump_sketch(file_sketch: &Vec<FileSketch>, out_file_path: &PathBuf) {
 
     // Serialization
     let serialized = bincode::serialize::<Vec<FileSketch>>(&file_sketch).unwrap();
+    // let serialized = bitcode::encode(file_sketch);
 
     // Dump sketch file
     fs::write(out_filename, &serialized).expect("Dump sketch file failed!");
@@ -251,6 +252,7 @@ pub fn load_sketch(path: &Path) -> Vec<FileSketch> {
     info!("Loading sketch from {}", path.to_str().unwrap());
     let serialized = fs::read(path).expect("Opening sketch file failed!");
     let file_sketch = bincode::deserialize::<Vec<FileSketch>>(&serialized[..]).unwrap();
+    // let file_sketch = bitcode::decode(&serialized[..]).unwrap();
 
     file_sketch
 }

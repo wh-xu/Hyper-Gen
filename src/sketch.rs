@@ -37,7 +37,7 @@ pub fn sketch(params: SketchParams) {
         let kmer_hash_set = extract_kmer_hash(&sketch);
 
         // Encode extracted kmer hash into sketch HV
-        let mut hv = if is_x86_feature_detected!("avx2") {
+        let hv = if is_x86_feature_detected!("avx2") {
             unsafe { hd::encode_hash_hd_avx2(&kmer_hash_set, &sketch) }
         } else {
             hd::encode_hash_hd(&kmer_hash_set, &sketch)
@@ -47,13 +47,9 @@ pub fn sketch(params: SketchParams) {
         sketch.hv_norm_2 = dist::compute_hv_l2_norm(&hv);
 
         // Sketch HV compression
-        sketch.hv_quant_bits = if params.if_compressed {
-            unsafe { hd::compress_hd_sketch_new(&mut hv, params.hv_d) }
-        } else {
-            16
-        };
-
-        sketch.hv.clone_from(&hv);
+        if params.if_compressed {
+            sketch.hv_quant_bits = unsafe { hd::compress_hd_sketch(sketch, &hv) };
+        }
 
         pb.inc(1);
         pb.eta();
@@ -65,8 +61,7 @@ pub fn sketch(params: SketchParams) {
         "Sketching {} files took {:.2}s - Speed: {:.1} files/s",
         n_file,
         pb.elapsed().as_secs_f32(),
-        pb.per_sec(),
-        // (n_file as f32 / pb.elapsed().as_secs_f32())
+        pb.per_sec()
     );
 
     // Dump sketch file

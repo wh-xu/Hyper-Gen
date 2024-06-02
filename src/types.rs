@@ -2,9 +2,8 @@ use std::arch::x86_64::*;
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-use t1ha;
-
 use serde::{Deserialize, Serialize};
+use t1ha;
 
 #[inline]
 pub fn mm_hash(bytes: &[u8]) -> usize {

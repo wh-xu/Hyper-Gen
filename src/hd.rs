@@ -1,6 +1,6 @@
 use log::info;
-use std::collections::HashSet;
 use std::arch::x86_64::*;
+use std::collections::HashSet;
 
 use crate::types::{FileSketch, Sketch};
 use rand::{RngCore, SeedableRng};
@@ -113,7 +113,9 @@ pub fn encode_hash_hd(kmer_hash_set: &HashSet<u64>, sketch: &FileSketch) -> Vec<
 
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
-pub unsafe fn compress_hd_sketch_new(hv: &mut Vec<i16>, hv_d: usize) -> u8 {
+pub unsafe fn compress_hd_sketch(sketch: &mut FileSketch, hv: &Vec<i16>) -> u8 {
+    let hv_d = sketch.hv_d;
+
     // find the lossless quantization bit width
     let min_hv = hv.iter().min().unwrap().clone();
     let max_hv = hv.iter().max().unwrap().clone();
@@ -132,9 +134,6 @@ pub unsafe fn compress_hd_sketch_new(hv: &mut Vec<i16>, hv_d: usize) -> u8 {
         }
         quant_bit += 1;
     }
-    let hv_quant_bits = quant_bit as u8;
-
-    // info!("Compressing hypervectors to {} bits", sketch.hv_quant_bits);
 
     // bit packing
     if is_x86_feature_detected!("avx2") {
@@ -153,7 +152,9 @@ pub unsafe fn compress_hd_sketch_new(hv: &mut Vec<i16>, hv_d: usize) -> u8 {
             );
         }
 
-        hv.clone_from(&hv_compress_bits[..].align_to::<i16>().1.to_vec());
+        sketch
+            .hv
+            .clone_from(&hv_compress_bits[..].align_to::<i16>().1.to_vec());
     } else {
         let len_bit_vec_u16 = (quant_bit as usize * hv_d + 16) / 16;
         let mut hv_compress_bits: Vec<i16> = vec![0; len_bit_vec_u16];
@@ -161,72 +162,10 @@ pub unsafe fn compress_hd_sketch_new(hv: &mut Vec<i16>, hv_d: usize) -> u8 {
             hv_compress_bits[i / 16] |=
                 ((hv[i / quant_bit as usize] >> (i % quant_bit as usize)) & 1) << (i % 16);
         }
-        hv.clone_from(&hv_compress_bits);
-    }
-
-    hv_quant_bits
-}
-
-#[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "avx2")]
-pub unsafe fn compress_hd_sketch(sketch: &mut Sketch) {
-    // scale HV values
-    let scale = sketch.hv_quant_scale;
-    for i in 0..sketch.hv.len() {
-        sketch.hv[i] = (sketch.hv[i] as f32 * scale) as i16;
-    }
-
-    // find the lossless quantization bit width
-    let min_hv = sketch.hv.iter().min().unwrap().clone();
-    let max_hv = sketch.hv.iter().max().unwrap().clone();
-
-    let mut quant_bit: i16 = 6;
-    loop {
-        let quant_min: i16 = -(1 << (quant_bit - 1));
-        let quant_max: i16 = (1 << (quant_bit - 1)) - 1;
-
-        if quant_min <= min_hv && quant_max >= max_hv {
-            break;
-        }
-
-        if quant_bit == 16 {
-            break;
-        }
-        quant_bit += 1;
-    }
-    sketch.hv_quant_bits = quant_bit as u8;
-
-    // info!("Compressing hypervectors to {} bits", sketch.hv_quant_bits);
-
-    // bit packing
-    if is_x86_feature_detected!("avx2") {
-        let offset: i16 = 1 << (quant_bit - 1);
-        let hv_u32: Vec<u32> = sketch.hv.iter().map(|&i| (i + offset) as u32).collect();
-
-        let bitpacker = BitPacker8x::new();
-        let bits_per_block = quant_bit as usize * 32;
-
-        let mut hv_compress_bits = vec![0u8; (quant_bit as usize) * (sketch.hv_d >> 3)];
-        for i in 0..(sketch.hv_d / BitPacker8x::BLOCK_LEN) {
-            bitpacker.compress(
-                &hv_u32[i * BitPacker8x::BLOCK_LEN..(i + 1) * BitPacker8x::BLOCK_LEN],
-                &mut hv_compress_bits[(bits_per_block * i)..(bits_per_block * (i + 1))],
-                quant_bit as u8,
-            );
-        }
-
-        sketch
-            .hv
-            .clone_from(&hv_compress_bits[..].align_to::<i16>().1.to_vec());
-    } else {
-        let len_bit_vec_u16 = (quant_bit as usize * sketch.hv_d + 16) / 16;
-        let mut hv_compress_bits: Vec<i16> = vec![0; len_bit_vec_u16];
-        for i in 0..(quant_bit as usize * sketch.hv_d) {
-            hv_compress_bits[i / 16] |=
-                ((sketch.hv[i / quant_bit as usize] >> (i % quant_bit as usize)) & 1) << (i % 16);
-        }
         sketch.hv.clone_from(&hv_compress_bits);
     }
+
+    quant_bit as u8
 }
 
 pub fn decompress_file_sketch(file_sketch: &mut Vec<FileSketch>) {
@@ -234,21 +173,10 @@ pub fn decompress_file_sketch(file_sketch: &mut Vec<FileSketch>) {
 
     info!("Decompressing sketch with HV dim={}", hv_dim);
 
-    file_sketch.into_par_iter().for_each(|sketch| unsafe {
-        decompress_hd_sketch(sketch);
+    file_sketch.into_par_iter().for_each(|sketch| {
+        let hv_decompressed = unsafe { decompress_hd_sketch(sketch) };
+        sketch.hv.clone_from(&hv_decompressed);
     });
-
-    // let index_hv: Vec<usize> = (0..file_sketch.hv_vec.len()).collect();
-    // let compressed_hv_vec: Vec<Vec<i16>> = file_sketch.hv_vec.clone();
-
-    // let decompressed_sketch_hv_vec: Vec<Vec<i16>> = index_hv
-    //     .par_iter()
-    //     .map(|i| unsafe {
-    //         decompress_hd_sketch(&compressed_hv_vec[*i], hv_dim, quant_bits_vec[*i])
-    //     })
-    //     .collect();
-
-    // file_sketch.hv_vec.clone_from(&decompressed_sketch_hv_vec);
 }
 
 #[cfg(target_arch = "x86_64")]

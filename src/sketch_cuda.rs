@@ -49,7 +49,7 @@ pub fn sketch_cuda(params: SketchParams) {
     .unwrap();
     let gpu = &gpu;
 
-    let all_sketch: Vec<FileSketch> = (0..n_file)
+    let mut all_filesketch: Vec<FileSketch> = (0..n_file)
         .into_iter()
         .map(|i| FileSketch {
             ksize: params.ksize,
@@ -65,7 +65,7 @@ pub fn sketch_cuda(params: SketchParams) {
         .collect();
 
     // start cuda sketching
-    all_sketch.into_par_iter().for_each(|mut sketch| {
+    all_filesketch.par_iter_mut().for_each(|sketch| {
         // NOTE: this is the important call to have
         // without this, you'll get a CUDA_ERROR_INVALID_CONTEXT
         gpu.bind_to_thread().unwrap();
@@ -74,7 +74,7 @@ pub fn sketch_cuda(params: SketchParams) {
         let kmer_hash_set = extract_kmer_t1ha2_cuda(&sketch, gpu);
 
         // Encode extracted kmer hash into sketch HV
-        let mut hv = if is_x86_feature_detected!("avx2") {
+        let hv = if is_x86_feature_detected!("avx2") {
             unsafe { hd::encode_hash_hd_avx2(&kmer_hash_set, &sketch) }
         } else {
             hd::encode_hash_hd(&kmer_hash_set, &sketch)
@@ -84,13 +84,9 @@ pub fn sketch_cuda(params: SketchParams) {
         sketch.hv_norm_2 = dist::compute_hv_l2_norm(&hv);
 
         // Sketch HV compression
-        sketch.hv_quant_bits = if params.if_compressed {
-            unsafe { hd::compress_hd_sketch_new(&mut hv, params.hv_d) }
-        } else {
-            16
-        };
-
-        sketch.hv.clone_from(&hv);
+        if params.if_compressed {
+            sketch.hv_quant_bits = unsafe { hd::compress_hd_sketch(sketch, &hv) };
+        }
 
         pb.inc(1);
         pb.eta();
@@ -102,11 +98,11 @@ pub fn sketch_cuda(params: SketchParams) {
         "Sketching {} files took {:.2}s - Speed: {:.1} files/s",
         files.len(),
         pb.elapsed().as_secs_f32(),
-        (files.len() as f32 / pb.elapsed().as_secs_f32())
+        pb.per_sec()
     );
 
     // Dump sketch file
-    // utils::dump_sketch(&file_sketch, &params);
+    utils::dump_sketch(&all_filesketch, &params.out_file);
 }
 
 fn extract_kmer_t1ha2_cuda(sketch: &FileSketch, gpu: &Arc<CudaDevice>) -> HashSet<u64> {

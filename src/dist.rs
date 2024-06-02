@@ -290,21 +290,5 @@ pub fn compute_hv_ani(
             pb.eta();
         });
 
-    // sketch_dist. = index_dist
-    //     .par_iter()
-    //     .map(|(i, j)| {
-    //         pb.inc(1);
-    //         pb.eta();
-
-    //         compute_pairwise_ani(
-    //             ref_filesketch.hv_vec[*i].clone(),
-    //             ref_filesketch.hv_norm_2[*i],
-    //             query_filesketch.hv_vec[*j].clone(),
-    //             query_filesketch.hv_norm_2[*j],
-    //             ksize,
-    //         )
-    //     })
-    //     .collect();
-
     pb.finish_and_clear();
 }
