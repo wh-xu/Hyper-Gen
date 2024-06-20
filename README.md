@@ -13,6 +13,7 @@ _HyperGen_ first samples the kmer set using FracMinHash. Then the kmer hashes ar
 
 ### Installation
 
+#### Basic Installation
 _HyperGen_ requires [`Rust`](https://www.rust-lang.org/tools/install) language and [`Cargo`](https://doc.rust-lang.org/cargo/) to be installed. 
 We recommend installing _HyperGen_ using the following command:
 ```sh
@@ -21,6 +22,12 @@ cd Hyper-Gen
 
 cargo install --path .
 ```
+
+#### Install with GPU Support
+_HyperGen_ supports GPU acceleration. Using GPU mode will require the installation of NVIDIA GPU driver. Use `nvidia-smi` or `nvcc -V` to check if the driver is installed. 
+
+Currently only Nvidia GPUs are supported. We tested the compatibility on both desktop `RTX4090` and laptop `RTX4060` with CUDA Version `12.x`. 
+
 
 ### Usage
 Current version supports following functions:
@@ -36,7 +43,6 @@ Positional arguments:
 -t, --thread <THREAD>           Threads used for computation [default: 16]
 -C, --canonical <CANONICAL>     If use canonical kmer [default: true]
 -k, --ksize <KSIZE>             k-mer size for sketching [default: 21]
--S, --seed <SEED>               Hash seed [default: 123]
 -s, --scaled <SCALED>           Scaled factor for FracMinHash [default: 1500]
 -d, --hv_d <HD_D>               Dimension for hypervector [default: 4096]
 -D, --device <DEVICE>           Device to run [default: cpu] [possible values: cpu, gpu]
@@ -56,6 +62,12 @@ Positional arguments:
 -a, --ani_th <ANI_TH>           ANI threshold [default: 85.0]
 ```
 
+#### 3. Faster sketching on GPU
+
+_HyperGen_ supports offloading the kmer hashing and sampling steps to GPU to speed up the sketching process. Use the following command to run on GPU device:
+```sh
+hyper-gen-rust sketch -D gpu -p ./data -o ./fna.sketch
+```
 
 ## Differences between _Mash_ and _HyperGen_
 
