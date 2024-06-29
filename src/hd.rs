@@ -2,7 +2,7 @@ use log::info;
 use std::arch::x86_64::*;
 use std::collections::HashSet;
 
-use crate::types::{FileSketch, Sketch};
+use crate::types::FileSketch;
 use rand::{RngCore, SeedableRng};
 use wyhash::WyRng;
 
