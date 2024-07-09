@@ -40,7 +40,7 @@ Current version supports following functions:
 #### 1. Genome sketching for .fa/.fna/.fasta files
 ```sh
 Example:
-hyper-gen-rust sketch -p ./data -o ./fna.sketch
+hyper-gen sketch -p ./data -o ./fna.sketch
 
 Positional arguments:
 -p, --path <PATH>               Input folder path to sketch
@@ -57,7 +57,7 @@ Positional arguments:
 #### 2. ANI estimation and database search
 ```sh
 Example:
-hyper-gen-rust dist -r fna1.sketch -q fna2.sketch -o output.ani
+hyper-gen dist -r fna1.sketch -q fna2.sketch -o output.ani
 
 Positional arguments:
 -r, --path_r <PATH_R>           Path to ref sketch file
@@ -71,7 +71,7 @@ Positional arguments:
 
 _HyperGen_ supports offloading the kmer hashing and sampling steps to GPU to speed up the sketching process. Use the following command to run on GPU device:
 ```sh
-hyper-gen-rust sketch -D gpu -p ./data -o ./fna.sketch
+hyper-gen sketch -D gpu -p ./data -o ./fna.sketch
 ```
 
 ## Differences between _Mash_ and _HyperGen_
