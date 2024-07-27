@@ -21,6 +21,8 @@ fn main() {
         ("compute_80", "sm_80") // Ampere architecture for NIVIDA A100 series
     } else if cfg!(feature = "cuda-sketch-hopper") {
         ("compute_90", "sm_90") // // Hopper architecture for NIVIDA H100 series
+    } else if cfg!(feature = "cuda-sketch-volta") {
+        ("compute_70", "sm_70") // Volta architecture for V100
     } else {
         panic!("Unsupported GPU architecture feature flag!");
     };

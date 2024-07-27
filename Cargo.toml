@@ -15,6 +15,9 @@ regex = "1.9.3"
 cuda-sketch-ada-lovelace = ["dep:cudarc"]
 
 ## Ampere architecture for NIVIDA A100 series
+cuda-sketch-volta = ["dep:cudarc"]
+
+## Ampere architecture for NIVIDA A100 series
 cuda-sketch-ampere = ["dep:cudarc"]
 
 ## Hopper architecture for NIVIDA H100 series
