@@ -1,5 +1,4 @@
 [![License bsd-3-clause](https://badgen.net/badge/license/MIT/red)](https://github.com/wh-xu/Hyper-Gen/blob/main/LICENSE)
-[![Bioinformatics](https://img.shields.io/badge/Bioinformatics-2024-informational)](https://academic.oup.com/bioinformatics/advance-article/doi/10.1093/bioinformatics/btae452/7714688)
 
 ## HyperGen: Compact and Efficient Genome Sketching using Hyperdimensional Vectors
 
@@ -86,7 +85,7 @@ hyper-gen sketch -D gpu -p ./data -o ./fna.sketch
 
 
 ## Publication
-1. Weihong Xu, Po-kai Hsu, Niema Moshiri, Shimeng Yu, and Tajana Rosing. "[HyperGen: Compact and Efficient Genome Sketching using Hyperdimensional Vectors](https://academic.oup.com/bioinformatics/advance-article/doi/10.1093/bioinformatics/btae452/7714688)." _Bioinformatics_, 2024.
+1. Weihong Xu, Po-kai Hsu, Niema Moshiri, Shimeng Yu, and Tajana Rosing. "[HyperGen: Compact and Efficient Genome Sketching using Hyperdimensional Vectors](https://www.biorxiv.org/content/10.1101/2024.03.05.583605)." _Under review_.
 
 
 ## Contact
