@@ -11,7 +11,17 @@ cc = "1.0.82"
 regex = "1.9.3"
 
 [features]
-cuda-sketch = ["dep:cudarc"]
+## Ada Lovelace architecture for NIVIDA RTX 4090 series
+cuda-sketch-ada-lovelace = ["dep:cudarc"]
+
+## Ampere architecture for NIVIDA A100 series
+cuda-sketch-volta = ["dep:cudarc"]
+
+## Ampere architecture for NIVIDA A100 series
+cuda-sketch-ampere = ["dep:cudarc"]
+
+## Hopper architecture for NIVIDA H100 series
+cuda-sketch-hopper = ["dep:cudarc"]
 
 [dependencies]
 log = "0.4.20"
@@ -33,7 +43,7 @@ indexmap = "2.0.2"
 needletail = "0.5.1"
 rust-seq2kminmers = "0.1.0"
 
-ahash = "0.8.3"
+ahash = "0.8.11"
 wyhash = "0.5.0"
 t1ha = "0.1.0"
 

@@ -1,6 +1,6 @@
 use crate::types::*;
 
-#[cfg(feature = "cuda-sketch")]
+#[cfg(any(feature = "cuda-sketch-volta", feature = "cuda-sketch-ada-lovelace", feature = "cuda-sketch-ampere", feature = "cuda-sketch-hopper"))]
 use {
     crate::{dist, fastx_reader, hd, utils},
     cudarc::driver::{CudaDevice, LaunchAsync, LaunchConfig},
@@ -16,10 +16,10 @@ use {
     std::time::Instant,
 };
 
-#[cfg(feature = "cuda-sketch")]
+#[cfg(any(feature = "cuda-sketch-volta",feature = "cuda-sketch-ada-lovelace", feature = "cuda-sketch-ampere", feature = "cuda-sketch-hopper"))]
 const CUDA_KERNEL_MY_STRUCT: &str = include_str!(concat!(env!("OUT_DIR"), "/cuda_kmer_hash.ptx"));
 
-#[cfg(feature = "cuda-sketch")]
+#[cfg(any(feature = "cuda-sketch-volta", feature = "cuda-sketch-ada-lovelace", feature = "cuda-sketch-ampere", feature = "cuda-sketch-hopper"))]
 const SEQ_NT4_TABLE: [u8; 256] = [
     0, 1, 2, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
@@ -32,15 +32,15 @@ const SEQ_NT4_TABLE: [u8; 256] = [
 ];
 
 #[allow(unused_variables)]
-#[cfg(not(feature = "cuda-sketch"))]
+#[cfg(not(any(feature = "cuda-sketch-volta", feature = "cuda-sketch-ada-lovelace", feature = "cuda-sketch-ampere", feature = "cuda-sketch-hopper")))]
 pub fn sketch_cuda(params: SketchParams) {
     use log::error;
 
-    error!("Cuda sketching is not supported. Please add `--features cuda-sketch` for installation to enable it.");
+    error!("Cuda sketching is not supported. Please add `--features cuda-sketch-ada-lovelace/cuda-sketch-ampere/cuda-sketch-hopper/cuda-sketch-volta` for installation to enable it.");
 }
 
 //  Sketch function to sketch all .fna files in folder path
-#[cfg(all(target_arch = "x86_64", feature = "cuda-sketch"))]
+#[cfg(all(target_arch = "x86_64", any(feature = "cuda-sketch-ada-lovelace", feature = "cuda-sketch-ampere", feature = "cuda-sketch-hopper", feature = "cuda-sketch-volta")))]
 pub fn sketch_cuda(params: SketchParams) {
     let files = utils::get_fasta_files(&params.path);
     let n_file = files.len();
@@ -116,7 +116,7 @@ pub fn sketch_cuda(params: SketchParams) {
     utils::dump_sketch(&all_filesketch, &params.out_file);
 }
 
-#[cfg(feature = "cuda-sketch")]
+#[cfg(any(feature = "cuda-sketch-volta", feature = "cuda-sketch-ada-lovelace", feature = "cuda-sketch-ampere", feature = "cuda-sketch-hopper"))]
 fn extract_kmer_t1ha2_cuda(sketch: &FileSketch, gpu: &Arc<CudaDevice>) -> HashSet<u64> {
     let fna_file = PathBuf::from(sketch.file_str.clone());
     let fna_seqs = fastx_reader::read_merge_seq(&fna_file);
@@ -165,7 +165,7 @@ fn extract_kmer_t1ha2_cuda(sketch: &FileSketch, gpu: &Arc<CudaDevice>) -> HashSe
     kmer_hash_set
 }
 
-#[cfg(feature = "cuda-sketch")]
+#[cfg(any(feature = "cuda-sketch-volta", feature = "cuda-sketch-volta", feature = "cuda-sketch-ada-lovelace", feature = "cuda-sketch-ampere", feature = "cuda-sketch-hopper"))]
 pub fn cuda_mmhash_bitpack_parallel(
     path_fna: &String,
     ksize: usize,
@@ -250,7 +250,7 @@ pub fn cuda_mmhash_bitpack_parallel(
     sketch_kmer_sets
 }
 
-#[cfg(feature = "cuda-sketch")]
+#[cfg(any(feature = "cuda-sketch-volta", feature = "cuda-sketch-ada-lovelace", feature = "cuda-sketch-ampere", feature = "cuda-sketch-hopper"))]
 pub fn cuda_t1ha2_hash_parallel(
     path_fna: &String,
     ksize: usize,

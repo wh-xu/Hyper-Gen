@@ -1,5 +1,4 @@
 [![License bsd-3-clause](https://badgen.net/badge/license/MIT/red)](https://github.com/wh-xu/Hyper-Gen/blob/main/LICENSE)
-[![Bioinformatics](https://img.shields.io/badge/Bioinformatics-2024-informational)](https://academic.oup.com/bioinformatics/advance-article/doi/10.1093/bioinformatics/btae452/7714688)
 
 ## HyperGen: Compact and Efficient Genome Sketching using Hyperdimensional Vectors
 
