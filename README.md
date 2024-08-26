@@ -27,8 +27,15 @@ cargo install --path .
 #### Install with GPU Support
 _HyperGen_ supports GPU acceleration. Using GPU mode will require the installation of NVIDIA GPU driver. Use `nvidia-smi` or `nvcc -V` to check if the driver is installed. Then run the following command to install with GPU support:
 ```sh
-# With GPU acceleration for sketching
-cargo install --features cuda-sketch --path .
+# With GPU acceleration for sketching, RTX 4090 series
+cargo install --features cuda-sketch-ada-lovelace --path .
+## A100 series
+cargo install --features cuda-sketch-ampere --path .
+## V100 series
+cargo install --features cuda-sketch-volta --path .
+## H100 series
+cargo install --features cuda-sketch-hopper --path .
+
 ```
 
 Currently only Nvidia GPUs are supported. We tested the compatibility on both desktop `RTX4090` and laptop `RTX4060` with CUDA Version `12.x`. 
